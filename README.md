@@ -18,6 +18,8 @@ Todo ocurre en el navegador: no se sube ningún archivo a ningún servidor.
 - Si Pages aún no ha desplegado (o prefieres no esperar), el mismo `index.html` se sirve desde
   <https://raw.githack.com/Isacrack/skinforge/main/index.html>
 
+![SkinForge publicado en GitHub Pages](capturas/en-linea.png)
+
 ![Vista 3D con la armadura y su OFFSET](capturas/modal-3d.png)
 
 ---
