@@ -104,6 +104,8 @@ se usa como textura:
 
 Los nombres se emparejan sin extensión y sin distinguir mayúsculas (`caballero.bbmodel` ↔ `caballero.png`).
 
+![Modelo del caballero pintado con la textura de tu PNG](capturas/png-mas-modelo.png)
+
 ### Qué se puede y qué no
 
 El formato de LCE **no admite modelos libres**: solo cajas adosadas a las partes del jugador.
