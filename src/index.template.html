@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SkinForge — Skins de Java/Bedrock a .pck para PS3</title>
+<meta name="description" content="Convierte skins PNG de Minecraft Java o packs de Bedrock (.mcpack/.zip) en un skin pack .pck para Minecraft PS3 (Legacy Console Edition). Todo en tu navegador, sin subir archivos.">
+<style>
+/*@@CSS@@*/
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="hero-top">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#eafff0" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.5 3.5 20.5 9.5"/>
+            <path d="M17.5 6.5 8 16l-3 3 1.5-4.5z" fill="#eafff0" fill-opacity=".35"/>
+            <path d="M6 18 18 6"/>
+          </svg>
+        </div>
+        <div>
+          <h1>SkinForge</h1>
+          <div class="tag">Java / Bedrock → PCK · PS3</div>
+        </div>
+      </div>
+      <div class="hero-chips">
+        <span class="chip green">● PCK tipo 3 · big endian (PS3)</span>
+        <span class="chip cyan">PACKID + localisation.loc + dlcskin*.png</span>
+        <span class="chip">Verificación integrada</span>
+      </div>
+    </div>
+
+    <div class="hero-copy">
+      <h2>Skins y texture packs para <em>Minecraft de PS3</em></h2>
+      <p>Convierte skins de <b>Java</b> y <b>Bedrock</b> en un <code>skin pack .pck</code>, o adapta tus texturas a un
+        <code>texture pack .pck</code> con el mismo formato que usan los DLC oficiales de Legacy Console Edition.
+        Todo se procesa en tu navegador: nada se sube a ningún servidor.</p>
+    </div>
+  </header>
+
+
+  <nav class="tabs" role="tablist" aria-label="Secciones">
+    <button class="tab active" role="tab" id="tabBtnSkins" aria-controls="panel-skins" aria-selected="true">
+      <span class="tab-ico" aria-hidden="true">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
+          <path d="M4 5h16v14H4z"/><path d="M12 5v14M4 12h16"/>
+        </svg>
+      </span>
+      <span class="tab-txt"><b>Skins</b><span>skin pack · .pck</span></span>
+    </button>
+    <button class="tab" role="tab" id="tabBtnTex" aria-controls="panel-tex" aria-selected="false">
+      <span class="tab-ico" aria-hidden="true">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
+          <path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/>
+        </svg>
+      </span>
+      <span class="tab-txt"><b>Texture packs</b><span>zip → .pck</span></span>
+    </button>
+  </nav>
+
+  <section class="tabpanel active" id="panel-skins" role="tabpanel" aria-labelledby="tabBtnSkins">
+  <div class="grid">
+
+    <!-- ============================ COLUMNA IZQUIERDA ============================ -->
+    <div class="col">
+      <section class="card" id="skinsCard">
+        <div class="card-head">
+          <h3><span class="step">1</span> Tus skins <span class="pill" id="skinCount">0</span></h3>
+          <div class="tools">
+            <button class="btn sm" id="pickBtn">+ Añadir</button>
+            <button class="btn sm ghost" id="clearBtn">Vaciar</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Añadir skins">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#5ad26f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/>
+              <path d="M4 15v3.5A2.5 2.5 0 0 0 6.5 21h11A2.5 2.5 0 0 0 20 18.5V15"/>
+            </svg>
+            <div class="dz-title">Arrastra aquí tus skins o packs</div>
+            <div class="dz-sub">o pulsa para elegir archivos</div>
+            <div class="dz-formats">
+              <code>.png</code><code>.jpg</code><code>.zip</code><code>.mcpack</code><code>.mcaddon</code><code>.pck</code><code>.bbmodel</code>
+            </div>
+          </div>
+          <input type="file" id="fileInput" multiple accept=".png,.jpg,.jpeg,.webp,.zip,.mcpack,.mcaddon,.mcskin,.pck,image/png" hidden>
+
+          <div class="empty" id="emptyState">
+            <span class="big" aria-hidden="true">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4a5a78" stroke-width="1.5" stroke-linejoin="round">
+                <path d="M4 8.5 12 4l8 4.5v7L12 20l-8-4.5z"/>
+                <path d="M4 8.5 12 13l8-4.5M12 13v7"/>
+              </svg>
+            </span>
+            Aún no hay skins. Añade una PNG <b>64×64</b> (Java moderno), <b>64×32</b> (clásico), un pack de Bedrock
+            o un <b>.bbmodel</b> de Blockbench con su textura.<br>
+            También puedes abrir un <code>.pck</code> existente para añadirle más skins.
+          </div>
+
+          <div class="skin-list" id="skinList"></div>
+        </div>
+      </section>
+
+      <section class="card" id="installCard">
+        <div class="card-head">
+          <h3><span class="step">4</span> Instalar en la PS3</h3>
+          <span class="pill">requiere CFW / HEN</span>
+        </div>
+        <div class="card-body">
+          <ol class="steps">
+            <li>Copia el <code>.pck</code> a un USB.</li>
+            <li>Abre el gestor de archivos de tu CFW (multiMAN, webMAN, Irisman…) y ve a la carpeta del juego:
+              <pre class="path">/dev_hdd0/game/<b>ID_DEL_JUEGO</b>/USRDIR/DLC/</pre>
+            </li>
+            <li>Crea una carpeta nueva con el nombre que quieras, por ejemplo <code>MiPack</code>, y dentro pega el <code>.pck</code>.</li>
+            <li>Abre Minecraft, entra en <b>Skins</b> (o <b>Opciones → Juego → Cambiar skin</b>) y busca la pestaña nueva.</li>
+          </ol>
+          <table class="ids">
+            <tr><td>PS3 disco USA</td><td><code>BLUS31426</code></td></tr>
+            <tr><td>PS3 digital USA</td><td><code>NPUB31419</code></td></tr>
+            <tr><td>PS3 disco Europa</td><td><code>BLES01976</code></td></tr>
+            <tr><td>PS3 digital Europa</td><td><code>NPEB01899</code></td></tr>
+          </table>
+          <div class="note"><b>Nota:</b> en algunas versiones el pack también se lee desde <code>USRDIR/CU/DLC/</code>.
+            Si no aparece la pestaña, prueba en esa ruta. El nombre de la pestaña sale de <code>IDS_DISPLAY_NAME</code>
+            (el «Nombre del pack» de los ajustes).</div>
+        </div>
+      </section>
+
+      <section class="card" id="whatCard">
+        <div class="card-head">
+          <h3>¿Qué hace exactamente?</h3>
+          <span class="pill">formato</span>
+        </div>
+        <div class="card-body" style="font-size:.86rem;color:#cfd8ea;display:grid;gap:10px">
+          <p style="margin:0">Genera un archivo <b>PCK tipo 3</b> (big endian, el que leen PS3 / Xbox 360 / Wii U) con esta estructura interna, la misma que produce PCK Studio:</p>
+          <table class="ids">
+            <tr><td><code>0</code> (InfoFile)</td><td>parámetros <code>PACKID</code> y <code>PACKVERSION</code></td></tr>
+            <tr><td><code>localisation.loc</code></td><td>nombre del pack (<code>IDS_DISPLAY_NAME</code>) y nombre de cada skin</td></tr>
+            <tr><td><code>dlcskin########.png</code></td><td>la textura + <code>DISPLAYNAME</code>, <code>DISPLAYNAMEID</code>, <code>THEMENAME</code>, <code>ANIM</code>, <code>GAME_FLAGS</code>, <code>FREE</code> y, si hay modelo 3D, una entrada <code>BOX</code> por caja</td></tr>
+          </table>
+          <p style="margin:0">Cabecera: <code>int32 pckType</code>, tabla de parámetros (LUT), lista de entradas (tamaño, tipo, nombre) y contenidos en formato <code>UTF-16</code> con el endianness del pack.</p>
+          <p style="margin:0">El valor <code>ANIM</code> se ajusta según el modelo: <code>0x00000000</code> para skins 64×32 clásicas, <code>0x00040000</code> para modernas de brazos anchos y <code>0x00080000</code> para Alex / slim.</p>
+          <p style="margin:0">La geometría viaja en el parámetro <code>BOX</code>: <code>TIPO X Y Z ANCHO ALTO FONDO U V</code> (más máscara de armadura, espejo e inflado en versiones nuevas). Ese formato solo existe desde la TU7 y necesita <code>XMLVERSION 2</code> o <code>3</code> en la cabecera del pack.</p>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============================ COLUMNA DERECHA ============================ -->
+    <div class="col">
+      <section class="card" id="settingsCard">
+        <div class="card-head">
+          <h3><span class="step">2</span> Ajustes del pack</h3>
+        </div>
+        <div class="card-body">
+          <div class="settings">
+            <label class="field">
+              <span>Nombre del pack (pestaña en el juego)</span>
+              <input type="text" id="packName" maxlength="48" value="Mis skins PS3" placeholder="Mi skin pack">
+            </label>
+
+            <div class="field">
+              <span>PACKID</span>
+              <div class="field-row" style="grid-template-columns:1fr 40px">
+                <input type="text" id="packId" inputmode="numeric" title="0 – 16777215">
+                <button class="icon-btn" id="rerollId" title="Generar otro PACKID">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <label class="field">
+              <span>PACKVERSION</span>
+              <input type="text" id="packVersion" inputmode="numeric" value="0">
+            </label>
+
+            <label class="field">
+              <span>Resolución de salida</span>
+              <select id="resolution">
+                <option value="auto">Automática (recomendada): 64×64 o 64×32</option>
+                <option value="64x64">Forzar 64×64 (moderno)</option>
+                <option value="64x32">Forzar 64×32 (clásico)</option>
+                <option value="orig">Mantener tamaño original</option>
+              </select>
+            </label>
+
+            <div class="field">
+              <span>Plataforma de destino</span>
+              <div class="radio-group">
+                <label class="radio">
+                  <input type="radio" name="target" value="ps3" checked>
+                  <span>
+                    <span class="r-title">PS3 · Xbox 360 · Wii U</span>
+                    <span class="r-sub">Big endian (por defecto, es lo que lee la PS3)</span>
+                  </span>
+                </label>
+                <label class="radio">
+                  <input type="radio" name="target" value="modern">
+                  <span>
+                    <span class="r-title">PS4 · PS Vita · Switch · Xbox One</span>
+                    <span class="r-sub">Little endian</span>
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <details class="adv">
+              <summary>Opciones avanzadas</summary>
+              <div class="adv-body">
+                <label class="field">
+                  <span>XMLVERSION / BOX version</span>
+                  <select id="xmlVersion">
+                    <option value="0">0 — formato clásico (recomendado)</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3 — BOX con escala (necesita parámetros BOX)</option>
+                  </select>
+                </label>
+                <div class="hint" style="text-align:left">Déjalo en <b>0</b> salvo que sepas lo que haces: si el pack tiene skins con <code>BOX</code> y la versión no coincide, el juego puede cerrarse.</div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" id="exportCard">
+        <div class="card-head">
+          <h3><span class="step">3</span> Exportar</h3>
+          <span class="pill" id="sumEst">≈ 0 B</span>
+        </div>
+        <div class="card-body">
+          <div class="summary">
+            <div class="row"><span>Skins en el pack</span><b id="sumSkins">0</b></div>
+            <div class="row"><span>Peso de las texturas</span><b id="sumPng">0 B</b></div>
+            <div class="row"><span>Formato</span><b id="sumFormat">PCK 3 · BE</b></div>
+          </div>
+          <div class="actions">
+            <button class="btn primary block" id="downloadBtn" disabled>⬇ Descargar .pck</button>
+            <button class="btn block" id="buildTestBtn">Verificar estructura</button>
+          </div>
+          <div class="hint" id="buildHint">Añade al menos una skin para poder exportar.</div>
+          <div class="log" id="logWrap"></div>
+        </div>
+      </section>
+
+      <section class="card" id="tipsCard">
+        <div class="card-head">
+          <h3>Consejos rápidos</h3>
+        </div>
+        <div class="card-body" style="font-size:.84rem;color:#cfd8ea;display:grid;gap:8px">
+          <div>• Usa skins <b>64×64</b> con transparencia real; el juego no rellena huecos.</div>
+          <div>• Mantén cada PNG por debajo de <b>32 KB</b>; imágenes muy pesadas pueden colgar la consola.</div>
+          <div>• Las skins <b>2:1 (64×32)</b> deben ir con modelo «Clásico».</div>
+          <div>• Para Alex / slim elige «Moderno fino»; PS3 renderiza brazos de 4 px, así que el resultado es aproximado.</div>
+          <div>• Puedes abrir un <code>.pck</code> oficial: sus skins se cargan en la lista y se pueden reexportar junto a las tuyas.</div>
+          <div>• <b>Modelo 3D:</b> suelta un <code>.bbmodel</code> de Blockbench (con su textura dentro) y se convierte a cajas <code>BOX</code> de LCE. LCE solo entiende las 6 partes del jugador y sus 6 capas: los cubos se emparejan por su nombre o por la <b>carpeta</b> que los contiene (<code>head</code>, <code>body</code>, <code>right_arm</code>…), los que no encajan se ignoran y las rotaciones se pierden.</div>
+        </div>
+      </section>
+
+      <section class="card" id="armorCard">
+        <div class="card-head">
+          <h3><span class="num">A</span> Si la armadura se ve mal</h3>
+        </div>
+        <div class="card-body armor-help">
+          <div>El juego dibuja la armadura sobre el <b>modelo estándar</b> (cabeza 8×8×8, cuerpo 8×12×4, brazos y piernas 4×12×4), no sobre tus cajas. Si agrandas una parte o llevas capas, el casco o el peto se quedan dentro de tu geometría y se ve raro.</div>
+          <div class="armor-step"><b>0 · ¿No tienes modelo?</b>
+            <span>Descarga una plantilla <code>.bbmodel</code> con la textura de la skin que tengas cargada, ábrela en Blockbench, cambia lo que quieras y vuelve a soltarla aquí.</span>
+            <button class="btn sm ghost" id="exampleModelBtn">⬇ Descargar .bbmodel de ejemplo</button></div>
+          <div class="armor-step"><b>1 · Abre el editor de cajas</b><span>Pulsa <code>3D</code> en la skin que tiene modelo: debajo de la vista hay una fila por caja (con su nombre y su carpeta) y cuatro casillas.</span></div>
+          <div class="armor-step"><b>2 · Marca qué pieza la oculta</b><span>Cada casilla hace que esa caja desaparezca cuando llevas esa pieza de armadura.</span></div>
+          <table>
+            <tr><th>Caja</th><th>Marcar</th></tr>
+            <tr><td><code>HEADWEAR</code> (sombrero)</td><td>Casco</td></tr>
+            <tr><td><code>JACKET</code>, <code>SLEEVE0/1</code></td><td>Peto</td></tr>
+            <tr><td><code>PANTS0/1</code></td><td>Gregüesco</td></tr>
+            <tr><td>Cabeza o cuerpo agrandados</td><td>La pieza que te tape</td></tr>
+          </table>
+          <div class="armor-step"><b>3 · O de golpe</b><span><code>Todo</code> oculta todas las cajas con cualquier armadura · <code>Solo capas</code> deja el comportamiento de Java · <code>Ninguna</code> lo quita.</span></div>
+          <div>Valores: casco <b>1</b> · peto <b>2</b> · gregüesco <b>4</b> · botas <b>8</b> (se suman). Necesita <b>TU31</b> o superior; las capas de armadura de Bedrock (<code>BOOT0</code>, <code>LEGGING0</code>…) son de TU58/TU60.</div>
+          <div class="armor-step"><b>4 · Si se hunde en vez de sobrar</b>
+            <span>En la vista <b>3D</b> las piezas de armadura salen dibujadas (azul): <b>arrástralas arriba o abajo</b> con el ratón y se mueven de verdad (<code>OFFSET</code>). También puedes pinchar una pieza en la lista y arrastrar, o escribir el número. Negativo = más arriba: una cabeza de 10 px pide casco <b>-2</b>. Funciona con cualquier skin, tenga modelo o no. (TU33; las partes base como <code>HEAD</code>, desde TU58).</span></div>
+          <div class="armor-step"><b>5 · Apagarla del todo</b>
+            <span>Casilla <b>Ocultar toda la armadura</b> (bit 9 de <code>ANIM</code>) o <b>No válida en Battle Mode</b> (bit 1 de <code>GAME_FLAGS</code>).</span></div>
+          <h5 style="margin:6px 0 0">Si vienes de PCK Studio</h5>
+          <table>
+            <tr><th>Allí</th><th>Aquí</th></tr>
+            <tr><td>Mask with helmet / chestplate / leggings / boots</td><td>Casillas Casco · Peto · Gregüesco · Botas</td></tr>
+            <tr><td>Pestaña <i>Offset</i> (HELMET, CHEST…)</td><td>«Mover la armadura» (<code>OFFSET</code>)</td></tr>
+            <tr><td><i>Hide All Armor</i></td><td>☐ Ocultar toda la armadura</td></tr>
+            <tr><td><i>Unfair in Competitive Battle Mode</i></td><td>☐ No válida en Battle Mode</td></tr>
+            <tr><td><i>Armor Panel</i> (3.ª vista)</td><td>Solo previsualiza la capa de armadura; no escribe nada</td></tr>
+          </table>
+          <div>Truco: si no quieres depender de la máscara, deja las medidas estándar en las partes que van tapadas por armadura.</div>
+        </div>
+      </section>
+    </div>
+  </div>
+  </section>
+
+  <section class="tabpanel" id="panel-tex" role="tabpanel" aria-labelledby="tabBtnTex" hidden>
+  <div class="grid">
+
+    <!-- ------------------------------- columna izquierda ------------------------------- -->
+    <div class="col">
+
+      <section class="card" id="baseCard">
+        <div class="card-head">
+          <h3><span class="step">1</span> Pack base de Legacy Console</h3>
+          <span class="pill" id="baseState">sin cargar</span>
+        </div>
+        <div class="card-body">
+          <div id="baseDrop" class="dropzone compact" tabindex="0" role="button" aria-label="Cargar pack base">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#5ad26f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15v3.5A2.5 2.5 0 0 0 6.5 21h11A2.5 2.5 0 0 0 20 18.5V15"/>
+            </svg>
+            <div class="dz-title">Suelta el texture pack <code>.pck</code> base</div>
+            <div class="dz-sub">x16.pck / x32.pck, o cualquier pack de texturas de LCE</div>
+            <div class="dz-formats"><code>.pck</code></div>
+          </div>
+          <input type="file" id="baseInput" accept=".pck" hidden>
+          <div id="baseInfo"></div>
+          <div id="baseAssets" class="asset-list"></div>
+        </div>
+      </section>
+
+      <section class="card" id="texCard">
+        <div class="card-head">
+          <h3><span class="step">2</span> Tus texturas</h3>
+          <div class="tools">
+            <button class="btn sm" id="texPickBtn">+ Añadir .zip / .png</button>
+            <button class="btn sm ghost" id="texClearBtn">Limpiar</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="texDrop" class="dropzone compact" tabindex="0" role="button" aria-label="Añadir texturas">
+            <div class="dz-title">Suelta un <code>.zip</code> con texturas o PNGs sueltos</div>
+            <div class="dz-sub">Se emparejan por ruta con las texturas del pack base</div>
+            <div class="dz-formats"><code>.zip</code><code>.png</code><code>.jar</code></div>
+          </div>
+          <input type="file" id="texInput" accept=".zip,.png,.jar" multiple hidden>
+          <div id="texReport" class="report"></div>
+        </div>
+      </section>
+
+      <section class="card" id="texInstallCard">
+        <div class="card-head">
+          <h3><span class="step">4</span> Instalar el texture pack en la PS3</h3>
+          <span class="pill">requiere CFW / HEN</span>
+        </div>
+        <div class="card-body">
+          <ol class="steps">
+            <li>Copia el <code>.pck</code> al USB.</li>
+            <li>Con el gestor de archivos del CFW, entra en:
+              <pre class="path">/dev_hdd0/game/<b>ID_DEL_JUEGO</b>/USRDIR/DLC/</pre>
+            </li>
+            <li>Crea una carpeta nueva (por ejemplo <code>MiTexturas</code>) y mete dentro el <code>.pck</code>.</li>
+            <li>Abre Minecraft → <b>Opciones → Juego → Texture pack</b> y selecciona el tuyo. Algunos packs solo se aplican
+              al crear un mundo nuevo o al recargar el mundo, así que sal y vuelve a entrar.</li>
+          </ol>
+          <table class="ids">
+            <tr><td>PS3 disco USA</td><td><code>BLUS31426</code></td></tr>
+            <tr><td>PS3 digital USA</td><td><code>NPUB31419</code></td></tr>
+            <tr><td>PS3 disco Europa</td><td><code>BLES01976</code></td></tr>
+            <tr><td>PS3 digital Europa</td><td><code>NPEB01899</code></td></tr>
+          </table>
+          <div class="note"><b>Importante:</b> el pack de texturas y el skin pack van en el <b>mismo</b> sitio
+            (<code>USRDIR/DLC/&lt;carpeta&gt;/</code>), cada uno en su carpeta. Puedes tener los dos instalados a la vez.</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ------------------------------- columna derecha ------------------------------- -->
+    <div class="col">
+
+      <section class="card" id="texExportCard">
+        <div class="card-head">
+          <h3><span class="step">3</span> Exportar</h3>
+          <span class="pill" id="texSumSize">—</span>
+        </div>
+        <div class="card-body">
+          <div class="summary">
+            <div class="row"><span>Archivos del pack</span><b id="texSumAssets">0</b></div>
+            <div class="row"><span>Texturas sustituidas</span><b id="texSumPatched">0</b></div>
+            <div class="row"><span>Formato de salida</span><b id="texSumFormat">PCK 3 · BE</b></div>
+          </div>
+
+          <div class="settings">
+            <label class="field">
+              <span>PACKID</span>
+              <input type="text" id="texPackId" inputmode="numeric" placeholder="se lee del pack base">
+            </label>
+            <div class="field">
+              <span>Endianness de salida</span>
+              <div class="radio-group">
+                <label class="radio">
+                  <input type="radio" name="texTarget" value="ps3" checked>
+                  <span><span class="r-title">PS3 · Xbox 360 · Wii U</span><span class="r-sub">Big endian</span></span>
+                </label>
+                <label class="radio">
+                  <input type="radio" name="texTarget" value="modern">
+                  <span><span class="r-title">PS4 · Vita · Switch</span><span class="r-sub">Little endian</span></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="actions" style="margin-top:14px">
+            <button class="btn primary block" id="texDownloadBtn" disabled>⬇ Descargar .pck</button>
+            <button class="btn block" id="texZipBtn" disabled>⬇ Exportar los PNG del pack (.zip)</button>
+            <button class="btn block" id="texVerifyBtn" disabled>Verificar estructura</button>
+          </div>
+          <div class="hint" id="texHint">Carga primero un pack base .pck.</div>
+          <div class="log" id="texLog"></div>
+        </div>
+      </section>
+
+      <section class="card" id="texFaqCard">
+        <div class="card-head">
+          <h3>¿Se puede pasar un pack de Java tal cual?</h3>
+          <span class="pill">honestidad</span>
+        </div>
+        <div class="card-body" style="font-size:.85rem;color:#cfd8ea;display:grid;gap:10px">
+          <p style="margin:0"><b>No directamente.</b> Minecraft de PS3 no usa un PNG por bloque: guarda las texturas
+            en <b>atlas</b> (<code>terrain.png</code>, <code>items.png</code>, <code>particles.png</code>,
+            <code>art/kz.png</code>, <code>misc/explosion.png</code>…) con una rejilla y un orden fijos que no
+            coinciden con los de Java ni Bedrock. Además necesita <code>colours.col</code> (tintes de bioma),
+            modelos, animaciones… Un zip de Java no trae nada de eso, así que «convertirlo» tile a tile daría un
+            pack roto.</p>
+          <p style="margin:0">Lo que <b>sí</b> funciona (y hace esta pestaña): usar un pack de LCE como base y
+            <b>sustituir sus texturas</b> por las tuyas, respetando el layout. Es el flujo real de los creadores de
+            packs: extraer los atlas, editarlos y volver a empaquetarlos.</p>
+          <ol class="steps" style="font-size:.82rem">
+            <li>Consigue un pack base (<code>x16.pck</code>) — con PCK Studio o desde el propio juego.</li>
+            <li>Pulsa <b>Exportar los PNG del pack (.zip)</b> y edita <code>terrain.png</code>, <code>items.png</code>… en tu editor.</li>
+            <li>Vuelve a soltar el zip aquí: se sustituyen solo las texturas que coincidan.</li>
+            <li>Descarga el <code>.pck</code> y instálalo en la PS3.</li>
+          </ol>
+          <p style="margin:0" class="muted">Rutas que se emparejan: <code>assets/minecraft/textures/block/x.png</code>
+            → <code>textures/blocks/x.png</code>, <code>…/textures/item/x.png</code> → <code>textures/items/x.png</code>,
+            <code>…/textures/entity/x.png</code> → <code>mob/x.png</code>, y coincidencia por nombre de archivo
+            (p. ej. <code>terrain.png</code>).</p>
+        </div>
+      </section>
+    </div>
+  </div>
+  </section>
+
+  <footer class="foot">
+    <hr>
+    <div><b>Privacidad:</b> todo el proceso (lectura de ZIP, escalado y escritura del .pck) ocurre en tu navegador. No se envía ningún archivo a Internet.</div>
+    <div><b>Créditos del formato:</b> ingeniería inversa del contenedor PCK documentada por OMI-Filetype-Library y PCK Studio (proyecto de PhoenixARC, MayN-L, NessieHax, EternalModz y colaboradores, GPL-3.0). Esta página es una implementación independiente del mismo formato.</div>
+    <div>No está afiliado a Mojang, Microsoft ni 4J Studios. «Minecraft» es una marca de Mojang AB.</div>
+  </footer>
+</div>
+
+<div id="toasts"></div>
+
+<div class="overlay" id="dollOverlay">
+  <div class="modal">
+    <h4 id="dollName">Skin</h4>
+    <canvas id="dollCanvas" width="160" height="320"></canvas>
+    <div class="doll-tools">
+      <label class="arm"><input type="checkbox" id="showBaseChk" checked> Base</label>
+      <label class="arm"><input type="checkbox" id="showCapasChk" checked> Capas</label>
+      <label class="arm"><input type="checkbox" id="showArmorChk"> Armadura</label>
+      <span class="muted">las capas (sombrero, chaqueta…) respetan la transparencia</span>
+    </div>
+    <div class="muted" id="dollMeta"></div>
+    <div class="doll-note" id="dollNote"></div>
+    <div class="box-editor" id="boxEditor"></div>
+    <button class="btn sm" id="dollClose">Cerrar</button>
+  </div>
+</div>
+
+<script>
+/*@@PCK@@*/
+</script>
+<script>
+/*@@APP@@*/
+</script>
+</body>
+</html>

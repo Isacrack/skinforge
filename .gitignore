@@ -1,0 +1,14 @@
+# dependencias y artefactos generados
+node_modules/
+test/out/
+.cache/
+.npm/
+.sudo_as_admin_successful
+
+# basura del sistema
+.DS_Store
+Thumbs.db
+
+# material de trabajo (capturas del usuario y referencias descargadas)
+uploads/
+ref/

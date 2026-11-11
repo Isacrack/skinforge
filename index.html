@@ -1,0 +1,3979 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SkinForge — Skins de Java/Bedrock a .pck para PS3</title>
+<meta name="description" content="Convierte skins PNG de Minecraft Java o packs de Bedrock (.mcpack/.zip) en un skin pack .pck para Minecraft PS3 (Legacy Console Edition). Todo en tu navegador, sin subir archivos.">
+<style>
+/* ================= SkinForge — estilos (sin recursos externos) ================= */
+:root {
+  --bg: #080b14;
+  --bg2: #0c1220;
+  --panel: rgba(19, 26, 44, 0.92);
+  --panel-2: rgba(13, 19, 33, 0.9);
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.16);
+  --text: #e8edf7;
+  --muted: #94a3bd;
+  --green: #5ad26f;
+  --green-dark: #2f9d48;
+  --cyan: #48cbe0;
+  --gold: #f2c14e;
+  --red: #ff6b6b;
+  --radius: 16px;
+  --shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+  font-family: var(--sans);
+  color: var(--text);
+  background:
+    radial-gradient(1100px 600px at 12% -10%, rgba(90, 210, 111, 0.16), transparent 60%),
+    radial-gradient(900px 500px at 88% 0%, rgba(72, 203, 224, 0.14), transparent 55%),
+    radial-gradient(700px 700px at 50% 120%, rgba(120, 90, 255, 0.12), transparent 60%),
+    var(--bg);
+  min-height: 100vh;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+  background-size: 44px 44px;
+  pointer-events: none;
+  mask-image: radial-gradient(ellipse at 50% 0%, black, transparent 75%);
+}
+
+a { color: var(--cyan); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.wrap { max-width: 1280px; margin: 0 auto; padding: 26px 22px 80px; position: relative; }
+
+/* ------------------------------- header ------------------------------- */
+header.hero { margin-bottom: 26px; }
+.hero-top { display: flex; flex-wrap: wrap; gap: 16px 22px; align-items: center; justify-content: space-between; }
+
+.brand { display: flex; align-items: center; gap: 14px; }
+.logo {
+  width: 52px; height: 52px; border-radius: 14px; flex: 0 0 auto;
+  background: linear-gradient(150deg, #2f9d48, #1d6b33 60%, #14472a);
+  display: grid; place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 10px 24px rgba(47, 157, 72, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.brand h1 { margin: 0; font-size: 1.32rem; letter-spacing: -0.3px; }
+.brand .tag { font-size: 0.78rem; color: var(--muted); letter-spacing: 0.6px; text-transform: uppercase; }
+
+.hero-copy { max-width: 760px; margin-top: 20px; }
+.hero-copy h2 { margin: 0 0 10px; font-size: clamp(1.5rem, 3.1vw, 2.1rem); line-height: 1.16; letter-spacing: -0.8px; }
+.hero-copy h2 em { font-style: normal; color: var(--green); }
+.hero-copy p { margin: 0; color: var(--muted); font-size: 0.98rem; }
+.hero-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  font-size: 0.76rem; padding: 5px 10px; border-radius: 999px; color: var(--muted);
+  border: 1px solid var(--line); background: rgba(255, 255, 255, 0.03);
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.chip b { color: var(--text); font-weight: 600; }
+.chip.green { color: #bff0c8; border-color: rgba(90, 210, 111, 0.35); background: rgba(90, 210, 111, 0.1); }
+.chip.cyan { color: #bdeef7; border-color: rgba(72, 203, 224, 0.3); background: rgba(72, 203, 224, 0.1); }
+
+/* -------------------------------- layout ------------------------------ */
+.grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(340px, 1fr); gap: 20px; align-items: start; }
+.col { display: grid; gap: 20px; }
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(8px);
+  overflow: hidden;
+}
+.card-head {
+  display: flex; align-items: center; gap: 12px; justify-content: space-between;
+  padding: 16px 18px; border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent);
+}
+.card-head h3 { margin: 0; font-size: 1rem; display: flex; align-items: center; gap: 10px; }
+.step {
+  width: 24px; height: 24px; border-radius: 8px; display: grid; place-items: center;
+  font-size: 0.78rem; font-weight: 700; color: #06210f;
+  background: linear-gradient(160deg, var(--green), var(--green-dark));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+.card-body { padding: 18px; }
+.card-head .tools { display: flex; gap: 8px; align-items: center; }
+
+/* ------------------------------- botones ------------------------------ */
+button { font-family: inherit; font-size: 0.88rem; cursor: pointer; }
+.btn {
+  border-radius: 11px; padding: 10px 15px; border: 1px solid var(--line-strong);
+  background: rgba(255, 255, 255, 0.06); color: var(--text);
+  font-weight: 600; transition: transform 0.12s ease, background 0.15s, border-color 0.15s, box-shadow 0.2s;
+  display: inline-flex; align-items: center; gap: 8px; justify-content: center;
+}
+.btn:hover { background: rgba(255, 255, 255, 0.12); }
+.btn:active { transform: translateY(1px); }
+.btn.primary {
+  background: linear-gradient(165deg, #67dd7b, #2f9d48);
+  border-color: rgba(255, 255, 255, 0.28); color: #04210e;
+  box-shadow: 0 10px 26px rgba(47, 157, 72, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.btn.primary:hover { filter: brightness(1.06); }
+.btn.ghost { background: transparent; }
+.btn.block { width: 100%; }
+.btn:disabled { opacity: 0.42; cursor: not-allowed; box-shadow: none; }
+.btn.sm { padding: 7px 11px; font-size: 0.8rem; border-radius: 9px; }
+
+/* ------------------------------ dropzone ------------------------------ */
+.dropzone {
+  border: 1.5px dashed rgba(90, 210, 111, 0.4);
+  border-radius: 14px;
+  background:
+    radial-gradient(400px 160px at 50% 0%, rgba(90, 210, 111, 0.12), transparent 70%),
+    rgba(90, 210, 111, 0.03);
+  padding: 22px 18px;
+  text-align: center;
+  transition: background 0.18s, border-color 0.18s, transform 0.18s;
+  cursor: pointer;
+}
+.dropzone.over { border-color: var(--green); background: rgba(90, 210, 111, 0.16); transform: scale(1.005); }
+.dropzone .dz-title { font-weight: 700; margin: 10px 0 4px; }
+.dropzone .dz-sub { color: var(--muted); font-size: 0.86rem; margin-bottom: 12px; }
+.dropzone .dz-formats { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
+.dropzone .dz-formats code { font-size: 0.74rem; }
+
+/* -------------------------------- lista ------------------------------- */
+.skin-list { display: grid; gap: 12px; margin-top: 16px; }
+.skin-card {
+  display: grid; grid-template-columns: 92px minmax(0, 1fr) 44px; gap: 14px;
+  padding: 12px; border-radius: 14px; border: 1px solid var(--line);
+  background: var(--panel-2);
+  animation: pop 0.22s ease;
+}
+@keyframes pop { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.skin-thumb {
+  position: relative; width: 92px; height: 92px; border-radius: 12px; overflow: hidden;
+  border: 1px solid var(--line-strong);
+  background-color: #0a0f1a;
+  background-image:
+    linear-gradient(45deg, #1a2234 25%, transparent 25%, transparent 75%, #1a2234 75%),
+    linear-gradient(45deg, #1a2234 25%, transparent 25%, transparent 75%, #1a2234 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 8px 8px;
+  display: grid; place-items: center;
+}
+.skin-thumb img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.skin-thumb .badge {
+  position: absolute; bottom: 4px; left: 4px; font-size: 0.62rem; font-family: var(--mono);
+  background: rgba(0, 0, 0, 0.66); padding: 2px 5px; border-radius: 6px; color: #cfe0ff;
+}
+.skin-fields { display: grid; gap: 8px; min-width: 0; }
+.field { display: grid; gap: 4px; min-width: 0; }
+.field > span { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.7px; color: var(--muted); }
+.field input, .field select {
+  width: 100%; padding: 8px 10px; border-radius: 9px; color: var(--text);
+  background: rgba(8, 12, 22, 0.85); border: 1px solid var(--line);
+  font-family: inherit; font-size: 0.88rem; min-width: 0;
+}
+.field input:focus, .field select:focus { outline: none; border-color: rgba(90, 210, 111, 0.65); box-shadow: 0 0 0 3px rgba(90, 210, 111, 0.14); }
+.field-row { display: grid; grid-template-columns: 1fr 96px; gap: 8px; }
+.skin-meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill { font-size: 0.7rem; padding: 3px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.06); color: var(--muted); border: 1px solid var(--line); }
+.pill.danger { color: #ffd0d0; border-color: rgba(255, 107, 107, 0.45); background: rgba(255, 107, 107, 0.14); }
+.skin-actions { display: grid; gap: 6px; align-content: start; }
+.icon-btn {
+  width: 32px; height: 30px; border-radius: 9px; border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.05); color: var(--muted); font-size: 0.78rem;
+  display: grid; place-items: center; transition: all 0.14s;
+}
+.icon-btn:hover { color: var(--text); background: rgba(255, 255, 255, 0.12); }
+.icon-btn.del:hover { color: #fff; background: rgba(255, 107, 107, 0.75); border-color: transparent; }
+.icon-btn.doll-btn { font-size: 0.66rem; letter-spacing: 0.4px; color: #bdeef7; border-color: rgba(72, 203, 224, 0.3); }
+
+.empty { text-align: center; padding: 26px 10px; color: var(--muted); font-size: 0.9rem; }
+.empty .big { font-size: 1.7rem; display: block; margin-bottom: 8px; }
+
+/* ------------------------------ ajustes ------------------------------- */
+.settings { display: grid; gap: 12px; }
+.settings .field-row { grid-template-columns: 1fr 40px; }
+.radio-group { display: grid; gap: 8px; }
+.radio {
+  display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 11px;
+  border: 1px solid var(--line); background: rgba(8, 12, 22, 0.6); cursor: pointer;
+}
+.radio:hover { border-color: var(--line-strong); }
+.radio input[type="radio"] {
+  margin: 3px 0 0; width: auto; flex: 0 0 auto; padding: 0;
+  accent-color: var(--green); appearance: auto; background: none; border: none; box-shadow: none;
+}
+.radio span { display: block; min-width: 0; }
+.radio .r-title { display: block; font-size: 0.88rem; font-weight: 600; }
+.radio .r-sub { display: block; font-size: 0.76rem; color: var(--muted); line-height: 1.35; }
+.radio:has(input:checked) { border-color: rgba(90, 210, 111, 0.6); background: rgba(90, 210, 111, 0.09); }
+
+details.adv { border-top: 1px solid var(--line); padding-top: 12px; }
+details.adv summary { cursor: pointer; font-size: 0.82rem; color: var(--muted); }
+details.adv summary:hover { color: var(--text); }
+details.adv .adv-body { display: grid; gap: 10px; padding-top: 12px; }
+
+/* ------------------------------- resumen ------------------------------ */
+.summary { display: grid; gap: 8px; margin-bottom: 14px; }
+.summary .row { display: flex; justify-content: space-between; font-size: 0.88rem; }
+.summary .row span:first-child { color: var(--muted); }
+.summary .row b { font-family: var(--mono); }
+.actions { display: grid; gap: 10px; }
+.hint { font-size: 0.78rem; color: var(--muted); margin-top: 4px; text-align: center; }
+
+.log { display: none; margin-top: 14px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.log.show { display: block; }
+.log-head { padding: 10px 12px; background: rgba(90, 210, 111, 0.08); border-bottom: 1px solid var(--line); display: grid; gap: 4px; font-size: 0.84rem; }
+.log-head .muted { font-size: 0.76rem; }
+.log-rows { display: grid; }
+.log-row { padding: 8px 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); display: grid; gap: 3px; }
+.log-row:last-child { border-bottom: none; }
+.log-row .log-name { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.log-row .log-name code { font-size: 0.76rem; color: #d6e6ff; overflow-wrap: anywhere; }
+.log-row .log-name .t { font-size: 0.68rem; color: var(--muted); white-space: nowrap; }
+.log-row .log-params { font-size: 0.7rem; color: var(--muted); overflow-wrap: anywhere; font-family: var(--mono); line-height: 1.45; }
+.muted { color: var(--muted); }
+.num { font-family: var(--mono); }
+
+/* ------------------------------ instrucciones ------------------------- */
+ol.steps { margin: 0; padding-left: 20px; display: grid; gap: 10px; font-size: 0.88rem; color: #d5deee; }
+ol.steps li::marker { color: var(--green); font-weight: 700; }
+pre.path {
+  font-family: var(--mono); font-size: 0.78rem; background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; margin: 8px 0 0;
+  overflow-x: auto; color: #cfe0ff;
+}
+pre.path b { color: var(--gold); }
+table.ids { width: 100%; border-collapse: collapse; font-size: 0.78rem; margin-top: 8px; }
+table.ids td { padding: 5px 8px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+table.ids td:first-child { color: var(--muted); }
+table.ids code { font-family: var(--mono); color: var(--cyan); }
+.note { font-size: 0.78rem; color: var(--muted); margin-top: 12px; padding: 10px 12px; border-radius: 10px; background: rgba(242, 193, 78, 0.08); border: 1px solid rgba(242, 193, 78, 0.25); }
+.note b { color: var(--gold); }
+
+/* -------------------------------- toasts ------------------------------ */
+#toasts { position: fixed; right: 18px; top: 18px; display: grid; gap: 10px; z-index: 90; max-width: min(380px, calc(100vw - 36px)); }
+.toast {
+  padding: 11px 14px; border-radius: 12px; font-size: 0.85rem; line-height: 1.4;
+  background: rgba(16, 22, 36, 0.97); border: 1px solid var(--line-strong);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
+  animation: slide 0.22s ease;
+}
+.toast.ok { border-color: rgba(90, 210, 111, 0.55); box-shadow: 0 14px 34px rgba(47, 157, 72, 0.25); }
+.toast.error { border-color: rgba(255, 107, 107, 0.6); }
+.toast.warn { border-color: rgba(242, 193, 78, 0.6); }
+.toast.out { opacity: 0; transform: translateY(8px); transition: all 0.35s; }
+.toast code { font-family: var(--mono); font-size: 0.8em; }
+@keyframes slide { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* -------------------------------- modal ------------------------------- */
+.overlay {
+  position: fixed; inset: 0; background: rgba(3, 6, 12, 0.82); backdrop-filter: blur(4px);
+  display: none; place-items: center; z-index: 80; padding: 20px;
+}
+.overlay.show { display: grid; }
+.modal {
+  background: var(--panel); border: 1px solid var(--line-strong); border-radius: 18px;
+  padding: 18px; box-shadow: var(--shadow); display: grid; gap: 12px; max-width: 100%;
+  text-align: center;
+  /* el editor de cajas puede ser largo: el modal scrollea por dentro */
+  max-height: 92vh; overflow-y: auto; overscroll-behavior: contain;
+  width: min(780px, 96vw);
+}
+.modal > * { flex: none; }
+.modal canvas {
+  image-rendering: pixelated; background: rgba(0, 0, 0, 0.35); border-radius: 12px;
+  border: 1px solid var(--line);
+  max-width: 100%; height: auto;
+}
+.modal h4 { margin: 0; font-size: 1rem; }
+.modal .muted { font-size: 0.8rem; }
+
+/* -------------------------------- footer ------------------------------ */
+footer.foot { margin-top: 30px; color: var(--muted); font-size: 0.78rem; display: grid; gap: 6px; }
+footer.foot hr { border: none; border-top: 1px solid var(--line); margin: 12px 0; }
+
+body.busy { cursor: progress; }
+body.busy .dropzone { opacity: 0.7; }
+
+/* ------------------------------ responsive ---------------------------- */
+@media (max-width: 980px) {
+  /* una sola columna, pero en orden lógico: skins → ajustes → exportar → instalar */
+  .grid { display: flex; flex-direction: column; }
+  .col { display: contents; }
+  #skinsCard { order: 1; }
+  #settingsCard { order: 2; }
+  #exportCard { order: 3; }
+  #installCard { order: 4; }
+  #tipsCard { order: 5; }
+  #whatCard { order: 6; }
+  .hero-copy { max-width: none; }
+}
+@media (max-width: 560px) {
+  .wrap { padding: 18px 14px 60px; }
+  .skin-card { grid-template-columns: 72px minmax(0, 1fr); }
+  .skin-thumb { width: 72px; height: 72px; }
+  .skin-actions { grid-column: 1 / -1; grid-auto-flow: column; justify-content: end; }
+  .field-row { grid-template-columns: 1fr 1fr; }
+}
+
+/* ================================ PESTAÑAS ================================ */
+.tabs { display: flex; gap: 8px; margin: 0 0 20px; flex-wrap: wrap; }
+.tab {
+  display: flex; align-items: center; gap: 10px; padding: 10px 16px;
+  border-radius: 13px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.04);
+  color: var(--muted); transition: all 0.16s ease;
+}
+.tab:hover { color: var(--text); background: rgba(255, 255, 255, 0.08); }
+.tab .tab-ico { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 9px;
+  background: rgba(255, 255, 255, 0.06); border: 1px solid var(--line); }
+.tab .tab-txt { display: grid; text-align: left; line-height: 1.15; }
+.tab .tab-txt b { font-size: 0.92rem; color: inherit; }
+.tab .tab-txt span { font-size: 0.72rem; opacity: 0.8; }
+.tab.active {
+  color: #eafff0; border-color: rgba(90, 210, 111, 0.55);
+  background: linear-gradient(170deg, rgba(90, 210, 111, 0.22), rgba(90, 210, 111, 0.06));
+  box-shadow: 0 10px 26px rgba(47, 157, 72, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+.tab.active .tab-ico { background: rgba(90, 210, 111, 0.22); border-color: rgba(90, 210, 111, 0.4); color: #d6ffe0; }
+.tabpanel[hidden] { display: none; }
+
+/* dropzone reducida */
+.dropzone.compact { padding: 16px 14px; }
+.dropzone.compact svg { width: 26px; height: 26px; }
+.dropzone.compact .dz-title { margin: 8px 0 2px; font-size: 0.92rem; }
+.dropzone.compact .dz-sub { margin-bottom: 0; font-size: 0.78rem; }
+.dropzone code { font-size: 0.78rem; }
+
+/* info del pack base */
+.base-info { display: grid; gap: 6px; margin-top: 14px; }
+.base-info .row { display: flex; justify-content: space-between; gap: 10px; font-size: 0.82rem; }
+.base-info .row span:first-child { color: var(--muted); }
+.base-info .row b { font-family: var(--mono); font-weight: 500; overflow-wrap: anywhere; text-align: right; }
+.asset-list { display: grid; gap: 4px; margin-top: 12px; max-height: 220px; overflow: auto; padding-right: 4px; }
+.asset-list .a-row {
+  display: flex; justify-content: space-between; gap: 10px; font-size: 0.75rem;
+  padding: 5px 8px; border-radius: 8px; background: rgba(255, 255, 255, 0.035); border: 1px solid var(--line);
+}
+.asset-list .a-row code { color: #cfe0ff; overflow-wrap: anywhere; }
+.asset-list .a-row .t { color: var(--muted); white-space: nowrap; }
+.asset-list .a-row.patched { border-color: rgba(90, 210, 111, 0.5); background: rgba(90, 210, 111, 0.12); }
+
+/* informe de coincidencias */
+.report { display: grid; gap: 6px; margin-top: 14px; }
+.report:empty { display: none; }
+.report .r-row {
+  display: grid; grid-template-columns: 20px minmax(0, 1fr); gap: 8px; align-items: start;
+  padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line);
+  background: rgba(8, 12, 22, 0.6); font-size: 0.78rem;
+}
+.report .r-row.ok { border-color: rgba(90, 210, 111, 0.45); background: rgba(90, 210, 111, 0.08); }
+.report .r-row.warn { border-color: rgba(242, 193, 78, 0.45); background: rgba(242, 193, 78, 0.08); }
+.report .r-row.err { border-color: rgba(255, 107, 107, 0.45); background: rgba(255, 107, 107, 0.08); }
+.report .r-ico { text-align: center; font-weight: 700; }
+.report .r-main { display: grid; gap: 2px; min-width: 0; }
+.report .r-src { font-family: var(--mono); font-size: 0.73rem; color: var(--muted); overflow-wrap: anywhere; }
+.report .r-dst { font-size: 0.78rem; overflow-wrap: anywhere; }
+.report .r-dst code { color: #cfe0ff; }
+.report .r-note { font-size: 0.71rem; color: var(--muted); }
+
+@media (max-width: 560px) {
+  .tab { flex: 1 1 auto; padding: 9px 12px; }
+  .tab .tab-txt span { display: none; }
+}
+
+.pill.ok-pill { color: #bff0c8; border-color: rgba(90, 210, 111, 0.55); background: rgba(90, 210, 111, 0.16); }
+
+/* ---------------------------- modelo 3D ---------------------------- */
+.model-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.model-row .btn { padding: 5px 9px; font-size: 0.75rem; }
+.pill.model-on { color: #bdeef7; border-color: rgba(72, 203, 224, 0.5); background: rgba(72, 203, 224, 0.14); }
+.doll-note { font-size: 0.74rem; color: var(--muted); max-width: 420px; text-align: left; }
+.doll-note:empty { display: none; }
+.doll-note ul { margin: 6px 0 0; padding-left: 16px; display: grid; gap: 3px; }
+.doll-note b { color: var(--gold); font-weight: 600; }
+#dollCanvas { max-height: 46vh; }
+
+/* --------------------- editor de cajas / armadura -------------------- */
+.box-editor { width: 100%; max-height: 34vh; overflow-y: auto; display: grid; gap: 6px; text-align: left; }
+.box-editor:empty { display: none; }
+.box-editor .be-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 0.74rem; color: var(--muted); }
+.box-editor .be-head .btn { padding: 4px 8px; font-size: 0.7rem; }
+.box-row {
+  display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;
+  background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line);
+  border-radius: 8px; padding: 6px 8px; font-size: 0.74rem;
+}
+.box-row .be-type { font-family: ui-monospace, monospace; font-size: 0.72rem; color: var(--cyan-bright, #6ee7f9); }
+.box-row .be-size { color: var(--muted); font-size: 0.68rem; }
+.box-row .be-mask { display: flex; gap: 6px; }
+.box-row label.arm {
+  display: flex; align-items: center; gap: 3px; cursor: pointer;
+  background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line);
+  border-radius: 6px; padding: 3px 6px; font-size: 0.68rem; user-select: none;
+}
+.box-row label.arm:has(input:checked) { border-color: rgba(94, 214, 122, 0.6); background: rgba(94, 214, 122, 0.16); color: #d6f7dd; }
+.box-row label.arm input { margin: 0; width: 11px; height: 11px; accent-color: #5ed67a; }
+.armor-hint { font-size: 0.72rem; color: var(--muted); line-height: 1.45; }
+.armor-hint b { color: var(--gold); }
+.pill.warn-pill { color: #ffe1a8; border-color: rgba(230, 170, 60, 0.5); background: rgba(230, 170, 60, 0.14); }
+.overlay.with-boxes #dollCanvas { max-height: 30vh; margin: 0 auto; }
+.overlay.with-boxes .box-editor { justify-self: stretch; }
+.overlay.with-boxes .doll-note { max-height: 12vh; overflow-y: auto; }
+
+/* tarjeta de ayuda de armadura */
+.armor-help { display: grid; gap: 8px; font-size: 0.82rem; color: var(--muted); line-height: 1.5; }
+.armor-help h5 { margin: 0; font-size: 0.85rem; color: var(--text); }
+.armor-help table { width: 100%; border-collapse: collapse; font-size: 0.76rem; }
+.armor-help th, .armor-help td { text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--line); }
+.armor-help code { font-size: 0.74rem; }
+.armor-help .armor-step { display: block; }
+.armor-help .armor-step b { display: block; color: var(--text); margin-bottom: 2px; }
+.armor-help .armor-step span { display: block; }
+.armor-help .armor-step .btn { margin-top: 6px; }
+.armor-help .armor-step code { word-break: break-word; }
+
+/* ------------- armadura del jugador: OFFSET y flags --------------- */
+.armor-offsets { display: grid; gap: 8px; }
+.off-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 6px; }
+.off {
+  display: grid; grid-template-columns: 1fr 46px; align-items: center; gap: 6px;
+  background: rgba(255, 255, 255, 0.03); border: 1px solid var(--line);
+  border-radius: 8px; padding: 4px 8px; font-size: 0.7rem; color: var(--muted);
+}
+.off input {
+  width: 100%; padding: 3px 4px; text-align: center; font-size: 0.74rem;
+  background: var(--bg-2, #0c1220); color: var(--text); border: 1px solid var(--line-strong);
+  border-radius: 6px;
+}
+.be-flags { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* pieza de armadura seleccionada (arrastre en la vista 3D) */
+.off.sel { border-color: rgba(255, 196, 110, 0.9); background: rgba(255, 186, 84, 0.14); color: var(--text); }
+#dollCanvas { touch-action: none; }
+.overlay.with-boxes #dollCanvas { cursor: default; }
+
+/* barra de la vista 3D */
+.doll-tools { display: flex; align-items: center; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.doll-tools .arm { font-size: 0.74rem; padding: 4px 8px; }
+.doll-tools .muted { font-size: 0.7rem; }
+
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <div class="hero-top">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#eafff0" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14.5 3.5 20.5 9.5"/>
+            <path d="M17.5 6.5 8 16l-3 3 1.5-4.5z" fill="#eafff0" fill-opacity=".35"/>
+            <path d="M6 18 18 6"/>
+          </svg>
+        </div>
+        <div>
+          <h1>SkinForge</h1>
+          <div class="tag">Java / Bedrock → PCK · PS3</div>
+        </div>
+      </div>
+      <div class="hero-chips">
+        <span class="chip green">● PCK tipo 3 · big endian (PS3)</span>
+        <span class="chip cyan">PACKID + localisation.loc + dlcskin*.png</span>
+        <span class="chip">Verificación integrada</span>
+      </div>
+    </div>
+
+    <div class="hero-copy">
+      <h2>Skins y texture packs para <em>Minecraft de PS3</em></h2>
+      <p>Convierte skins de <b>Java</b> y <b>Bedrock</b> en un <code>skin pack .pck</code>, o adapta tus texturas a un
+        <code>texture pack .pck</code> con el mismo formato que usan los DLC oficiales de Legacy Console Edition.
+        Todo se procesa en tu navegador: nada se sube a ningún servidor.</p>
+    </div>
+  </header>
+
+
+  <nav class="tabs" role="tablist" aria-label="Secciones">
+    <button class="tab active" role="tab" id="tabBtnSkins" aria-controls="panel-skins" aria-selected="true">
+      <span class="tab-ico" aria-hidden="true">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
+          <path d="M4 5h16v14H4z"/><path d="M12 5v14M4 12h16"/>
+        </svg>
+      </span>
+      <span class="tab-txt"><b>Skins</b><span>skin pack · .pck</span></span>
+    </button>
+    <button class="tab" role="tab" id="tabBtnTex" aria-controls="panel-tex" aria-selected="false">
+      <span class="tab-ico" aria-hidden="true">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round">
+          <path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/>
+        </svg>
+      </span>
+      <span class="tab-txt"><b>Texture packs</b><span>zip → .pck</span></span>
+    </button>
+  </nav>
+
+  <section class="tabpanel active" id="panel-skins" role="tabpanel" aria-labelledby="tabBtnSkins">
+  <div class="grid">
+
+    <!-- ============================ COLUMNA IZQUIERDA ============================ -->
+    <div class="col">
+      <section class="card" id="skinsCard">
+        <div class="card-head">
+          <h3><span class="step">1</span> Tus skins <span class="pill" id="skinCount">0</span></h3>
+          <div class="tools">
+            <button class="btn sm" id="pickBtn">+ Añadir</button>
+            <button class="btn sm ghost" id="clearBtn">Vaciar</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Añadir skins">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#5ad26f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/>
+              <path d="M4 15v3.5A2.5 2.5 0 0 0 6.5 21h11A2.5 2.5 0 0 0 20 18.5V15"/>
+            </svg>
+            <div class="dz-title">Arrastra aquí tus skins o packs</div>
+            <div class="dz-sub">o pulsa para elegir archivos</div>
+            <div class="dz-formats">
+              <code>.png</code><code>.jpg</code><code>.zip</code><code>.mcpack</code><code>.mcaddon</code><code>.pck</code><code>.bbmodel</code>
+            </div>
+          </div>
+          <input type="file" id="fileInput" multiple accept=".png,.jpg,.jpeg,.webp,.zip,.mcpack,.mcaddon,.mcskin,.pck,image/png" hidden>
+
+          <div class="empty" id="emptyState">
+            <span class="big" aria-hidden="true">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4a5a78" stroke-width="1.5" stroke-linejoin="round">
+                <path d="M4 8.5 12 4l8 4.5v7L12 20l-8-4.5z"/>
+                <path d="M4 8.5 12 13l8-4.5M12 13v7"/>
+              </svg>
+            </span>
+            Aún no hay skins. Añade una PNG <b>64×64</b> (Java moderno), <b>64×32</b> (clásico), un pack de Bedrock
+            o un <b>.bbmodel</b> de Blockbench con su textura.<br>
+            También puedes abrir un <code>.pck</code> existente para añadirle más skins.
+          </div>
+
+          <div class="skin-list" id="skinList"></div>
+        </div>
+      </section>
+
+      <section class="card" id="installCard">
+        <div class="card-head">
+          <h3><span class="step">4</span> Instalar en la PS3</h3>
+          <span class="pill">requiere CFW / HEN</span>
+        </div>
+        <div class="card-body">
+          <ol class="steps">
+            <li>Copia el <code>.pck</code> a un USB.</li>
+            <li>Abre el gestor de archivos de tu CFW (multiMAN, webMAN, Irisman…) y ve a la carpeta del juego:
+              <pre class="path">/dev_hdd0/game/<b>ID_DEL_JUEGO</b>/USRDIR/DLC/</pre>
+            </li>
+            <li>Crea una carpeta nueva con el nombre que quieras, por ejemplo <code>MiPack</code>, y dentro pega el <code>.pck</code>.</li>
+            <li>Abre Minecraft, entra en <b>Skins</b> (o <b>Opciones → Juego → Cambiar skin</b>) y busca la pestaña nueva.</li>
+          </ol>
+          <table class="ids">
+            <tr><td>PS3 disco USA</td><td><code>BLUS31426</code></td></tr>
+            <tr><td>PS3 digital USA</td><td><code>NPUB31419</code></td></tr>
+            <tr><td>PS3 disco Europa</td><td><code>BLES01976</code></td></tr>
+            <tr><td>PS3 digital Europa</td><td><code>NPEB01899</code></td></tr>
+          </table>
+          <div class="note"><b>Nota:</b> en algunas versiones el pack también se lee desde <code>USRDIR/CU/DLC/</code>.
+            Si no aparece la pestaña, prueba en esa ruta. El nombre de la pestaña sale de <code>IDS_DISPLAY_NAME</code>
+            (el «Nombre del pack» de los ajustes).</div>
+        </div>
+      </section>
+
+      <section class="card" id="whatCard">
+        <div class="card-head">
+          <h3>¿Qué hace exactamente?</h3>
+          <span class="pill">formato</span>
+        </div>
+        <div class="card-body" style="font-size:.86rem;color:#cfd8ea;display:grid;gap:10px">
+          <p style="margin:0">Genera un archivo <b>PCK tipo 3</b> (big endian, el que leen PS3 / Xbox 360 / Wii U) con esta estructura interna, la misma que produce PCK Studio:</p>
+          <table class="ids">
+            <tr><td><code>0</code> (InfoFile)</td><td>parámetros <code>PACKID</code> y <code>PACKVERSION</code></td></tr>
+            <tr><td><code>localisation.loc</code></td><td>nombre del pack (<code>IDS_DISPLAY_NAME</code>) y nombre de cada skin</td></tr>
+            <tr><td><code>dlcskin########.png</code></td><td>la textura + <code>DISPLAYNAME</code>, <code>DISPLAYNAMEID</code>, <code>THEMENAME</code>, <code>ANIM</code>, <code>GAME_FLAGS</code>, <code>FREE</code> y, si hay modelo 3D, una entrada <code>BOX</code> por caja</td></tr>
+          </table>
+          <p style="margin:0">Cabecera: <code>int32 pckType</code>, tabla de parámetros (LUT), lista de entradas (tamaño, tipo, nombre) y contenidos en formato <code>UTF-16</code> con el endianness del pack.</p>
+          <p style="margin:0">El valor <code>ANIM</code> se ajusta según el modelo: <code>0x00000000</code> para skins 64×32 clásicas, <code>0x00040000</code> para modernas de brazos anchos y <code>0x00080000</code> para Alex / slim.</p>
+          <p style="margin:0">La geometría viaja en el parámetro <code>BOX</code>: <code>TIPO X Y Z ANCHO ALTO FONDO U V</code> (más máscara de armadura, espejo e inflado en versiones nuevas). Ese formato solo existe desde la TU7 y necesita <code>XMLVERSION 2</code> o <code>3</code> en la cabecera del pack.</p>
+        </div>
+      </section>
+    </div>
+
+    <!-- ============================ COLUMNA DERECHA ============================ -->
+    <div class="col">
+      <section class="card" id="settingsCard">
+        <div class="card-head">
+          <h3><span class="step">2</span> Ajustes del pack</h3>
+        </div>
+        <div class="card-body">
+          <div class="settings">
+            <label class="field">
+              <span>Nombre del pack (pestaña en el juego)</span>
+              <input type="text" id="packName" maxlength="48" value="Mis skins PS3" placeholder="Mi skin pack">
+            </label>
+
+            <div class="field">
+              <span>PACKID</span>
+              <div class="field-row" style="grid-template-columns:1fr 40px">
+                <input type="text" id="packId" inputmode="numeric" title="0 – 16777215">
+                <button class="icon-btn" id="rerollId" title="Generar otro PACKID">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 3v6h-6"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <label class="field">
+              <span>PACKVERSION</span>
+              <input type="text" id="packVersion" inputmode="numeric" value="0">
+            </label>
+
+            <label class="field">
+              <span>Resolución de salida</span>
+              <select id="resolution">
+                <option value="auto">Automática (recomendada): 64×64 o 64×32</option>
+                <option value="64x64">Forzar 64×64 (moderno)</option>
+                <option value="64x32">Forzar 64×32 (clásico)</option>
+                <option value="orig">Mantener tamaño original</option>
+              </select>
+            </label>
+
+            <div class="field">
+              <span>Plataforma de destino</span>
+              <div class="radio-group">
+                <label class="radio">
+                  <input type="radio" name="target" value="ps3" checked>
+                  <span>
+                    <span class="r-title">PS3 · Xbox 360 · Wii U</span>
+                    <span class="r-sub">Big endian (por defecto, es lo que lee la PS3)</span>
+                  </span>
+                </label>
+                <label class="radio">
+                  <input type="radio" name="target" value="modern">
+                  <span>
+                    <span class="r-title">PS4 · PS Vita · Switch · Xbox One</span>
+                    <span class="r-sub">Little endian</span>
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <details class="adv">
+              <summary>Opciones avanzadas</summary>
+              <div class="adv-body">
+                <label class="field">
+                  <span>XMLVERSION / BOX version</span>
+                  <select id="xmlVersion">
+                    <option value="0">0 — formato clásico (recomendado)</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3 — BOX con escala (necesita parámetros BOX)</option>
+                  </select>
+                </label>
+                <div class="hint" style="text-align:left">Déjalo en <b>0</b> salvo que sepas lo que haces: si el pack tiene skins con <code>BOX</code> y la versión no coincide, el juego puede cerrarse.</div>
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <section class="card" id="exportCard">
+        <div class="card-head">
+          <h3><span class="step">3</span> Exportar</h3>
+          <span class="pill" id="sumEst">≈ 0 B</span>
+        </div>
+        <div class="card-body">
+          <div class="summary">
+            <div class="row"><span>Skins en el pack</span><b id="sumSkins">0</b></div>
+            <div class="row"><span>Peso de las texturas</span><b id="sumPng">0 B</b></div>
+            <div class="row"><span>Formato</span><b id="sumFormat">PCK 3 · BE</b></div>
+          </div>
+          <div class="actions">
+            <button class="btn primary block" id="downloadBtn" disabled>⬇ Descargar .pck</button>
+            <button class="btn block" id="buildTestBtn">Verificar estructura</button>
+          </div>
+          <div class="hint" id="buildHint">Añade al menos una skin para poder exportar.</div>
+          <div class="log" id="logWrap"></div>
+        </div>
+      </section>
+
+      <section class="card" id="tipsCard">
+        <div class="card-head">
+          <h3>Consejos rápidos</h3>
+        </div>
+        <div class="card-body" style="font-size:.84rem;color:#cfd8ea;display:grid;gap:8px">
+          <div>• Usa skins <b>64×64</b> con transparencia real; el juego no rellena huecos.</div>
+          <div>• Mantén cada PNG por debajo de <b>32 KB</b>; imágenes muy pesadas pueden colgar la consola.</div>
+          <div>• Las skins <b>2:1 (64×32)</b> deben ir con modelo «Clásico».</div>
+          <div>• Para Alex / slim elige «Moderno fino»; PS3 renderiza brazos de 4 px, así que el resultado es aproximado.</div>
+          <div>• Puedes abrir un <code>.pck</code> oficial: sus skins se cargan en la lista y se pueden reexportar junto a las tuyas.</div>
+          <div>• <b>Modelo 3D:</b> suelta un <code>.bbmodel</code> de Blockbench (con su textura dentro) y se convierte a cajas <code>BOX</code> de LCE. LCE solo entiende las 6 partes del jugador y sus 6 capas: los cubos se emparejan por su nombre o por la <b>carpeta</b> que los contiene (<code>head</code>, <code>body</code>, <code>right_arm</code>…), los que no encajan se ignoran y las rotaciones se pierden.</div>
+        </div>
+      </section>
+
+      <section class="card" id="armorCard">
+        <div class="card-head">
+          <h3><span class="num">A</span> Si la armadura se ve mal</h3>
+        </div>
+        <div class="card-body armor-help">
+          <div>El juego dibuja la armadura sobre el <b>modelo estándar</b> (cabeza 8×8×8, cuerpo 8×12×4, brazos y piernas 4×12×4), no sobre tus cajas. Si agrandas una parte o llevas capas, el casco o el peto se quedan dentro de tu geometría y se ve raro.</div>
+          <div class="armor-step"><b>0 · ¿No tienes modelo?</b>
+            <span>Descarga una plantilla <code>.bbmodel</code> con la textura de la skin que tengas cargada, ábrela en Blockbench, cambia lo que quieras y vuelve a soltarla aquí.</span>
+            <button class="btn sm ghost" id="exampleModelBtn">⬇ Descargar .bbmodel de ejemplo</button></div>
+          <div class="armor-step"><b>1 · Abre el editor de cajas</b><span>Pulsa <code>3D</code> en la skin que tiene modelo: debajo de la vista hay una fila por caja (con su nombre y su carpeta) y cuatro casillas.</span></div>
+          <div class="armor-step"><b>2 · Marca qué pieza la oculta</b><span>Cada casilla hace que esa caja desaparezca cuando llevas esa pieza de armadura.</span></div>
+          <table>
+            <tr><th>Caja</th><th>Marcar</th></tr>
+            <tr><td><code>HEADWEAR</code> (sombrero)</td><td>Casco</td></tr>
+            <tr><td><code>JACKET</code>, <code>SLEEVE0/1</code></td><td>Peto</td></tr>
+            <tr><td><code>PANTS0/1</code></td><td>Gregüesco</td></tr>
+            <tr><td>Cabeza o cuerpo agrandados</td><td>La pieza que te tape</td></tr>
+          </table>
+          <div class="armor-step"><b>3 · O de golpe</b><span><code>Todo</code> oculta todas las cajas con cualquier armadura · <code>Solo capas</code> deja el comportamiento de Java · <code>Ninguna</code> lo quita.</span></div>
+          <div>Valores: casco <b>1</b> · peto <b>2</b> · gregüesco <b>4</b> · botas <b>8</b> (se suman). Necesita <b>TU31</b> o superior; las capas de armadura de Bedrock (<code>BOOT0</code>, <code>LEGGING0</code>…) son de TU58/TU60.</div>
+          <div class="armor-step"><b>4 · Si se hunde en vez de sobrar</b>
+            <span>En la vista <b>3D</b> las piezas de armadura salen dibujadas (azul): <b>arrástralas arriba o abajo</b> con el ratón y se mueven de verdad (<code>OFFSET</code>). También puedes pinchar una pieza en la lista y arrastrar, o escribir el número. Negativo = más arriba: una cabeza de 10 px pide casco <b>-2</b>. Funciona con cualquier skin, tenga modelo o no. (TU33; las partes base como <code>HEAD</code>, desde TU58).</span></div>
+          <div class="armor-step"><b>5 · Apagarla del todo</b>
+            <span>Casilla <b>Ocultar toda la armadura</b> (bit 9 de <code>ANIM</code>) o <b>No válida en Battle Mode</b> (bit 1 de <code>GAME_FLAGS</code>).</span></div>
+          <h5 style="margin:6px 0 0">Si vienes de PCK Studio</h5>
+          <table>
+            <tr><th>Allí</th><th>Aquí</th></tr>
+            <tr><td>Mask with helmet / chestplate / leggings / boots</td><td>Casillas Casco · Peto · Gregüesco · Botas</td></tr>
+            <tr><td>Pestaña <i>Offset</i> (HELMET, CHEST…)</td><td>«Mover la armadura» (<code>OFFSET</code>)</td></tr>
+            <tr><td><i>Hide All Armor</i></td><td>☐ Ocultar toda la armadura</td></tr>
+            <tr><td><i>Unfair in Competitive Battle Mode</i></td><td>☐ No válida en Battle Mode</td></tr>
+            <tr><td><i>Armor Panel</i> (3.ª vista)</td><td>Solo previsualiza la capa de armadura; no escribe nada</td></tr>
+          </table>
+          <div>Truco: si no quieres depender de la máscara, deja las medidas estándar en las partes que van tapadas por armadura.</div>
+        </div>
+      </section>
+    </div>
+  </div>
+  </section>
+
+  <section class="tabpanel" id="panel-tex" role="tabpanel" aria-labelledby="tabBtnTex" hidden>
+  <div class="grid">
+
+    <!-- ------------------------------- columna izquierda ------------------------------- -->
+    <div class="col">
+
+      <section class="card" id="baseCard">
+        <div class="card-head">
+          <h3><span class="step">1</span> Pack base de Legacy Console</h3>
+          <span class="pill" id="baseState">sin cargar</span>
+        </div>
+        <div class="card-body">
+          <div id="baseDrop" class="dropzone compact" tabindex="0" role="button" aria-label="Cargar pack base">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#5ad26f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5"/><path d="M4 15v3.5A2.5 2.5 0 0 0 6.5 21h11A2.5 2.5 0 0 0 20 18.5V15"/>
+            </svg>
+            <div class="dz-title">Suelta el texture pack <code>.pck</code> base</div>
+            <div class="dz-sub">x16.pck / x32.pck, o cualquier pack de texturas de LCE</div>
+            <div class="dz-formats"><code>.pck</code></div>
+          </div>
+          <input type="file" id="baseInput" accept=".pck" hidden>
+          <div id="baseInfo"></div>
+          <div id="baseAssets" class="asset-list"></div>
+        </div>
+      </section>
+
+      <section class="card" id="texCard">
+        <div class="card-head">
+          <h3><span class="step">2</span> Tus texturas</h3>
+          <div class="tools">
+            <button class="btn sm" id="texPickBtn">+ Añadir .zip / .png</button>
+            <button class="btn sm ghost" id="texClearBtn">Limpiar</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="texDrop" class="dropzone compact" tabindex="0" role="button" aria-label="Añadir texturas">
+            <div class="dz-title">Suelta un <code>.zip</code> con texturas o PNGs sueltos</div>
+            <div class="dz-sub">Se emparejan por ruta con las texturas del pack base</div>
+            <div class="dz-formats"><code>.zip</code><code>.png</code><code>.jar</code></div>
+          </div>
+          <input type="file" id="texInput" accept=".zip,.png,.jar" multiple hidden>
+          <div id="texReport" class="report"></div>
+        </div>
+      </section>
+
+      <section class="card" id="texInstallCard">
+        <div class="card-head">
+          <h3><span class="step">4</span> Instalar el texture pack en la PS3</h3>
+          <span class="pill">requiere CFW / HEN</span>
+        </div>
+        <div class="card-body">
+          <ol class="steps">
+            <li>Copia el <code>.pck</code> al USB.</li>
+            <li>Con el gestor de archivos del CFW, entra en:
+              <pre class="path">/dev_hdd0/game/<b>ID_DEL_JUEGO</b>/USRDIR/DLC/</pre>
+            </li>
+            <li>Crea una carpeta nueva (por ejemplo <code>MiTexturas</code>) y mete dentro el <code>.pck</code>.</li>
+            <li>Abre Minecraft → <b>Opciones → Juego → Texture pack</b> y selecciona el tuyo. Algunos packs solo se aplican
+              al crear un mundo nuevo o al recargar el mundo, así que sal y vuelve a entrar.</li>
+          </ol>
+          <table class="ids">
+            <tr><td>PS3 disco USA</td><td><code>BLUS31426</code></td></tr>
+            <tr><td>PS3 digital USA</td><td><code>NPUB31419</code></td></tr>
+            <tr><td>PS3 disco Europa</td><td><code>BLES01976</code></td></tr>
+            <tr><td>PS3 digital Europa</td><td><code>NPEB01899</code></td></tr>
+          </table>
+          <div class="note"><b>Importante:</b> el pack de texturas y el skin pack van en el <b>mismo</b> sitio
+            (<code>USRDIR/DLC/&lt;carpeta&gt;/</code>), cada uno en su carpeta. Puedes tener los dos instalados a la vez.</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ------------------------------- columna derecha ------------------------------- -->
+    <div class="col">
+
+      <section class="card" id="texExportCard">
+        <div class="card-head">
+          <h3><span class="step">3</span> Exportar</h3>
+          <span class="pill" id="texSumSize">—</span>
+        </div>
+        <div class="card-body">
+          <div class="summary">
+            <div class="row"><span>Archivos del pack</span><b id="texSumAssets">0</b></div>
+            <div class="row"><span>Texturas sustituidas</span><b id="texSumPatched">0</b></div>
+            <div class="row"><span>Formato de salida</span><b id="texSumFormat">PCK 3 · BE</b></div>
+          </div>
+
+          <div class="settings">
+            <label class="field">
+              <span>PACKID</span>
+              <input type="text" id="texPackId" inputmode="numeric" placeholder="se lee del pack base">
+            </label>
+            <div class="field">
+              <span>Endianness de salida</span>
+              <div class="radio-group">
+                <label class="radio">
+                  <input type="radio" name="texTarget" value="ps3" checked>
+                  <span><span class="r-title">PS3 · Xbox 360 · Wii U</span><span class="r-sub">Big endian</span></span>
+                </label>
+                <label class="radio">
+                  <input type="radio" name="texTarget" value="modern">
+                  <span><span class="r-title">PS4 · Vita · Switch</span><span class="r-sub">Little endian</span></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="actions" style="margin-top:14px">
+            <button class="btn primary block" id="texDownloadBtn" disabled>⬇ Descargar .pck</button>
+            <button class="btn block" id="texZipBtn" disabled>⬇ Exportar los PNG del pack (.zip)</button>
+            <button class="btn block" id="texVerifyBtn" disabled>Verificar estructura</button>
+          </div>
+          <div class="hint" id="texHint">Carga primero un pack base .pck.</div>
+          <div class="log" id="texLog"></div>
+        </div>
+      </section>
+
+      <section class="card" id="texFaqCard">
+        <div class="card-head">
+          <h3>¿Se puede pasar un pack de Java tal cual?</h3>
+          <span class="pill">honestidad</span>
+        </div>
+        <div class="card-body" style="font-size:.85rem;color:#cfd8ea;display:grid;gap:10px">
+          <p style="margin:0"><b>No directamente.</b> Minecraft de PS3 no usa un PNG por bloque: guarda las texturas
+            en <b>atlas</b> (<code>terrain.png</code>, <code>items.png</code>, <code>particles.png</code>,
+            <code>art/kz.png</code>, <code>misc/explosion.png</code>…) con una rejilla y un orden fijos que no
+            coinciden con los de Java ni Bedrock. Además necesita <code>colours.col</code> (tintes de bioma),
+            modelos, animaciones… Un zip de Java no trae nada de eso, así que «convertirlo» tile a tile daría un
+            pack roto.</p>
+          <p style="margin:0">Lo que <b>sí</b> funciona (y hace esta pestaña): usar un pack de LCE como base y
+            <b>sustituir sus texturas</b> por las tuyas, respetando el layout. Es el flujo real de los creadores de
+            packs: extraer los atlas, editarlos y volver a empaquetarlos.</p>
+          <ol class="steps" style="font-size:.82rem">
+            <li>Consigue un pack base (<code>x16.pck</code>) — con PCK Studio o desde el propio juego.</li>
+            <li>Pulsa <b>Exportar los PNG del pack (.zip)</b> y edita <code>terrain.png</code>, <code>items.png</code>… en tu editor.</li>
+            <li>Vuelve a soltar el zip aquí: se sustituyen solo las texturas que coincidan.</li>
+            <li>Descarga el <code>.pck</code> y instálalo en la PS3.</li>
+          </ol>
+          <p style="margin:0" class="muted">Rutas que se emparejan: <code>assets/minecraft/textures/block/x.png</code>
+            → <code>textures/blocks/x.png</code>, <code>…/textures/item/x.png</code> → <code>textures/items/x.png</code>,
+            <code>…/textures/entity/x.png</code> → <code>mob/x.png</code>, y coincidencia por nombre de archivo
+            (p. ej. <code>terrain.png</code>).</p>
+        </div>
+      </section>
+    </div>
+  </div>
+  </section>
+
+  <footer class="foot">
+    <hr>
+    <div><b>Privacidad:</b> todo el proceso (lectura de ZIP, escalado y escritura del .pck) ocurre en tu navegador. No se envía ningún archivo a Internet.</div>
+    <div><b>Créditos del formato:</b> ingeniería inversa del contenedor PCK documentada por OMI-Filetype-Library y PCK Studio (proyecto de PhoenixARC, MayN-L, NessieHax, EternalModz y colaboradores, GPL-3.0). Esta página es una implementación independiente del mismo formato.</div>
+    <div>No está afiliado a Mojang, Microsoft ni 4J Studios. «Minecraft» es una marca de Mojang AB.</div>
+  </footer>
+</div>
+
+<div id="toasts"></div>
+
+<div class="overlay" id="dollOverlay">
+  <div class="modal">
+    <h4 id="dollName">Skin</h4>
+    <canvas id="dollCanvas" width="160" height="320"></canvas>
+    <div class="doll-tools">
+      <label class="arm"><input type="checkbox" id="showBaseChk" checked> Base</label>
+      <label class="arm"><input type="checkbox" id="showCapasChk" checked> Capas</label>
+      <label class="arm"><input type="checkbox" id="showArmorChk"> Armadura</label>
+      <span class="muted">las capas (sombrero, chaqueta…) respetan la transparencia</span>
+    </div>
+    <div class="muted" id="dollMeta"></div>
+    <div class="doll-note" id="dollNote"></div>
+    <div class="box-editor" id="boxEditor"></div>
+    <button class="btn sm" id="dollClose">Cerrar</button>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   pck.js — Lector/escritor del formato .PCK de Minecraft Legacy Console
+   Edition (PS3 / Xbox 360 / Wii U / PS4 / Vita / Switch).
+
+   Reimplementación en JavaScript del formato documentado por:
+     - OMI-Filetype-Library (PckFileReader / PckFileWriter / LOCFileWriter)
+     - PCK Studio (LCERD/PCK-Studio)  — SkinExtensions, MainForm.InitializePack
+   Ambas GPL-3.0. Esta es una implementación independiente del mismo formato.
+
+   Estructura de un .pck (tipo 3, el que usan los skin packs):
+     int32   pckType                     (3)
+     int32   lutCount                    (nº de claves de la tabla de parámetros)
+     [ int32 index, string key ] * n
+     int32   xmlVersion                  (sólo si la LUT contiene "XMLVERSION")
+     int32   assetCount
+     [ int32 size, int32 type, string filename ] * assetCount
+     [ int32 paramCount, [ int32 keyIndex, string value ] * n, bytes data ] * assetCount
+
+   string = int32 longitudEnChars + longitudEnChars*2 bytes (UTF-16, en el
+            endianness del pack) + int32 padding (0)
+   ========================================================================= */
+(function (root, factory) {
+  var api = factory();
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  root.PCK = api;
+})(typeof globalThis !== 'undefined' ? globalThis : this, function () {
+  'use strict';
+
+  var ASSET_TYPE = {
+    SkinFile: 0,
+    CapeFile: 1,
+    TextureFile: 2,
+    UIDataFile: 3,
+    InfoFile: 4,
+    TexturePackInfoFile: 5,
+    LocalisationFile: 6,
+    GameRulesFile: 7,
+    AudioFile: 8,
+    ColourTableFile: 9,
+    GameRulesHeader: 10,
+    SkinDataFile: 11,
+    ModelsFile: 12,
+    BehavioursFile: 13,
+    MaterialFile: 14
+  };
+  var ASSET_TYPE_NAME = {};
+  Object.keys(ASSET_TYPE).forEach(function (k) { ASSET_TYPE_NAME[ASSET_TYPE[k]] = k; });
+
+  var XML_VERSION_STRING = 'XMLVERSION';
+
+  /* ----------------------------- utilidades ----------------------------- */
+
+  function pad8(n) { return String(n).padStart(8, '0'); }
+
+  function hex(value, digits) {
+    return (value >>> 0).toString(16).padStart(digits, '0');
+  }
+
+  function toU8(data) {
+    if (data instanceof Uint8Array) return data;
+    if (data instanceof ArrayBuffer) return new Uint8Array(data);
+    if (ArrayBuffer.isView(data)) return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+    return new Uint8Array(0);
+  }
+
+  /* ------------------------------ escritor ------------------------------ */
+
+  function Writer(littleEndian) {
+    this.le = !!littleEndian;
+    this.chunks = [];
+    this.length = 0;
+  }
+  Writer.prototype.push = function (u8) {
+    this.chunks.push(u8);
+    this.length += u8.length;
+    return this;
+  };
+  Writer.prototype.i32 = function (v) {
+    var b = new ArrayBuffer(4);
+    new DataView(b).setInt32(0, v | 0, this.le);
+    return this.push(new Uint8Array(b));
+  };
+  Writer.prototype.i16 = function (v) {
+    var b = new ArrayBuffer(2);
+    new DataView(b).setUint16(0, v & 0xffff, false); // las longitudes de .loc son siempre big-endian
+    return this.push(new Uint8Array(b));
+  };
+  Writer.prototype.u8 = function (v) { return this.push(new Uint8Array([v & 0xff])); };
+  Writer.prototype.raw = function (u8) { return this.push(u8); };
+  /* string del .pck: longitud en chars + UTF-16 + padding */
+  Writer.prototype.string = function (str) {
+    str = String(str == null ? '' : str);
+    var buf = new Uint8Array(4 + str.length * 2 + 4);
+    var dv = new DataView(buf.buffer);
+    dv.setInt32(0, str.length, this.le);
+    for (var i = 0; i < str.length; i++) dv.setUint16(4 + i * 2, str.charCodeAt(i), this.le);
+    dv.setInt32(4 + str.length * 2, 0, this.le);
+    return this.push(buf);
+  };
+  /* string UTF-8 de 16 bits de longitud (formato .loc, siempre big-endian) */
+  Writer.prototype.utf8 = function (str) {
+    var bytes = utf8Encode(String(str == null ? '' : str));
+    var b = new ArrayBuffer(2);
+    new DataView(b).setUint16(0, bytes.length, false);
+    return this.push(new Uint8Array(b)).push(bytes);
+  };
+  Writer.prototype.bytes = function () {
+    var out = new Uint8Array(this.length);
+    var off = 0;
+    for (var i = 0; i < this.chunks.length; i++) {
+      out.set(this.chunks[i], off);
+      off += this.chunks[i].length;
+    }
+    return out;
+  };
+
+  function utf8Encode(str) {
+    if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(str);
+    // Fallback mínimo
+    var out = [];
+    for (var i = 0; i < str.length; i++) {
+      var c = str.charCodeAt(i);
+      if (c < 0x80) out.push(c);
+      else if (c < 0x800) out.push(0xc0 | (c >> 6), 0x80 | (c & 63));
+      else out.push(0xe0 | (c >> 12), 0x80 | ((c >> 6) & 63), 0x80 | (c & 63));
+    }
+    return new Uint8Array(out);
+  }
+
+  function utf8Decode(bytes) {
+    if (typeof TextDecoder !== 'undefined') return new TextDecoder('utf-8').decode(bytes);
+    var s = '';
+    for (var i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);
+    return s;
+  }
+
+  /* ------------------------------ lector -------------------------------- */
+
+  function Reader(buffer, littleEndian) {
+    this.buf = buffer;
+    this.view = new DataView(buffer);
+    this.offset = 0;
+    this.le = !!littleEndian;
+  }
+  Reader.prototype.canRead = function (n) { return this.offset + n <= this.buf.byteLength; };
+  Reader.prototype.i32 = function () {
+    if (!this.canRead(4)) throw new Error('Fin de fichero inesperado (i32 @' + this.offset + ')');
+    var v = this.view.getInt32(this.offset, this.le);
+    this.offset += 4;
+    return v;
+  };
+  Reader.prototype.raw = function (n) {
+    if (!this.canRead(n)) throw new Error('Fin de fichero inesperado (data @' + this.offset + ')');
+    var out = new Uint8Array(this.buf, this.offset, n);
+    this.offset += n;
+    return out;
+  };
+  Reader.prototype.string = function () {
+    var len = this.i32();
+    if (len < 0 || len > 0x100000) throw new Error('Longitud de cadena inválida: ' + len);
+    var bytes = this.raw(len * 2);
+    this.i32(); // padding
+    var s = '';
+    var dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    for (var i = 0; i < len; i++) {
+      var c = dv.getUint16(i * 2, this.le);
+      if (c === 0) break;
+      s += String.fromCharCode(c);
+    }
+    return s;
+  };
+
+  /* --------------------------- .pck : escritura -------------------------- */
+
+  /**
+   * Escribe un .pck.
+   * @param {object} o
+   * @param {number} o.pckType        tipo de pack (3 = skin pack / DLC)
+   * @param {number} [o.xmlVersion]   BOX version (0 = formato clásico)
+   * @param {boolean} [o.littleEndian] false = PS3 / Xbox 360 / Wii U
+   * @param {Array} o.assets          [{filename, type, data, params:[[k,v],...]}]
+   */
+  function writePck(o) {
+    var assets = (o.assets || []).filter(function (a) { return !a.skip; });
+    var le = !!o.littleEndian;
+    var pckType = o.pckType == null ? 3 : o.pckType;
+    var xmlVersion = o.xmlVersion | 0;
+
+    // Tabla de parámetros (LUT): claves únicas, en orden de aparición.
+    var lut = [];
+    assets.forEach(function (asset) {
+      (asset.params || []).forEach(function (p) {
+        if (lut.indexOf(p[0]) === -1) lut.push(p[0]);
+      });
+    });
+    var hasXml = xmlVersion > 0;
+    if (hasXml && lut.indexOf(XML_VERSION_STRING) === -1) lut.push(XML_VERSION_STRING);
+
+    var w = new Writer(le);
+    w.i32(pckType);
+    w.i32(lut.length);
+    lut.forEach(function (key, i) {
+      w.i32(i);
+      w.string(key);
+    });
+    if (hasXml) w.i32(xmlVersion);
+
+    var used = assets;
+    w.i32(used.length);
+    used.forEach(function (a) {
+      var data = toU8(a.data);
+      w.i32(data.length);
+      w.i32(a.type);
+      w.string(a.filename);
+    });
+    used.forEach(function (a) {
+      var params = a.params || [];
+      w.i32(params.length);
+      params.forEach(function (p) {
+        var idx = lut.indexOf(p[0]);
+        if (idx === -1) throw new Error('Parámetro fuera de la LUT: ' + p[0]);
+        w.i32(idx);
+        w.string(p[1]);
+      });
+      w.raw(toU8(a.data));
+    });
+    return w.bytes();
+  }
+
+  /* --------------------------- .pck : lectura --------------------------- */
+
+  function readPckWith(buffer, le) {
+    var r = new Reader(buffer, le);
+    var pckType = r.i32();
+    if (pckType < 3 || pckType > 0x00ffffff) throw new Error('pckType inválido: ' + pckType);
+
+    var lutCount = r.i32();
+    if (lutCount % 1 !== 0 || lutCount < 0 || lutCount > 100000) throw new Error('LUT inválida');
+    var lut = new Array(lutCount);
+    for (var i = 0; i < lutCount; i++) {
+      var idx = r.i32();
+      var key = r.string();
+      if (idx < 0 || idx >= lutCount) throw new Error('índice LUT inválido');
+      lut[idx] = key;
+    }
+    var xmlVersion = 0;
+    if (lut.indexOf(XML_VERSION_STRING) !== -1) xmlVersion = r.i32();
+
+    var assetCount = r.i32();
+    if (assetCount < 0 || assetCount > 200000) throw new Error('assetCount inválido: ' + assetCount);
+    var entries = [];
+    for (var a = 0; a < assetCount; a++) {
+      entries.push({ size: r.i32(), type: r.i32(), filename: r.string().replace(/\\/g, '/') });
+    }
+
+    var assets = [];
+    for (var b = 0; b < entries.length; b++) {
+      var e = entries[b];
+      var paramCount = r.i32();
+      if (paramCount < 0 || paramCount > 100000) throw new Error('paramCount inválido');
+      var params = [];
+      for (var p = 0; p < paramCount; p++) {
+        var ki = r.i32();
+        var value = r.string();
+        params.push([lut[ki] != null ? lut[ki] : 'UNKNOWN_' + ki, value]);
+      }
+      if (e.size < 0) throw new Error('tamaño de asset inválido');
+      var data = r.raw(e.size);
+      assets.push({
+        filename: e.filename,
+        type: e.type,
+        typeName: ASSET_TYPE_NAME[e.type] || ('Type' + e.type),
+        data: new Uint8Array(data), // copia (buf.slice)
+        params: params,
+        get: function (k) {
+          for (var i2 = 0; i2 < this.params.length; i2++) if (this.params[i2][0] === k) return this.params[i2][1];
+          return null;
+        }
+      });
+    }
+    if (r.offset !== buffer.byteLength) {
+      // sobrante: no es fatal, algunos packs llevan relleno
+    }
+    return {
+      pckType: pckType,
+      xmlVersion: xmlVersion,
+      littleEndian: !!le,
+      assets: assets,
+      lut: lut,
+      platform: le ? 'PS4 / PS Vita / Switch' : 'PS3 / Xbox 360 / Wii U'
+    };
+  }
+
+  /**
+   * Lee un .pck detectando el endianness automáticamente.
+   */
+  function readPck(input) {
+    var buffer = input instanceof ArrayBuffer
+      ? input
+      : (input.buffer ? input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength) : input);
+    try {
+      return readPckWith(buffer, false);
+    } catch (errBE) {
+      try {
+        return readPckWith(buffer, true);
+      } catch (errLE) {
+        throw new Error('No es un .pck válido (' + errBE.message + ' / ' + errLE.message + ')');
+      }
+    }
+  }
+
+  /* ---------------------------- .loc (idiomas) --------------------------- */
+
+  /**
+   * Escribe un archivo de localización (localisation.loc / languages.loc).
+   * version 2 = formato moderno (sin UIDs).
+   * @param {object} o {languages:['en-EN'], keys:{KEY:{'en-EN':'valor'}}, version}
+   */
+  function writeLoc(o) {
+    var version = o.version == null ? 2 : o.version;
+    var languages = o.languages || ['en-EN'];
+    var keys = o.keys || {};
+    var keyNames = Object.keys(keys);
+    var hasUids = false;
+
+    var w = new Writer(false); // .loc siempre big-endian
+    w.i32(version);
+    w.i32(languages.length);
+    if (version === 2) {
+      w.u8(hasUids ? 1 : 0);
+      w.i32(keyNames.length);
+      keyNames.forEach(function (k) { w.utf8(k); });
+    }
+    languages.forEach(function (lang) {
+      var langBytes = utf8Encode(lang);
+      var size = 4 + (version > 0 ? 1 : 0) + (2 + langBytes.length) + 4;
+      keyNames.forEach(function (k) {
+        if (version === 0) size += 2 + utf8Encode(k).length;
+        size += 2 + utf8Encode((keys[k] || {})[lang] || '').length;
+      });
+      w.utf8(lang);
+      w.i32(size);
+    });
+    languages.forEach(function (lang) {
+      w.i32(version);
+      if (version > 0) w.u8(hasUids ? 1 : 0);
+      w.utf8(lang);
+      w.i32(keyNames.length);
+      keyNames.forEach(function (k) {
+        if (version === 0) w.utf8(k);
+        w.utf8((keys[k] || {})[lang] || '');
+      });
+    });
+    return w.bytes();
+  }
+
+  function readLoc(input) {
+    var buffer = input instanceof ArrayBuffer
+      ? input
+      : (input.buffer ? input.buffer.slice(input.byteOffset, input.byteOffset + input.byteLength) : input);
+    var dv = new DataView(buffer);
+    var off = 0;
+    function i32() { var v = dv.getInt32(off, false); off += 4; return v; }
+    function u8() { return dv.getUint8(off++); }
+    function str() {
+      var len = dv.getUint16(off, false); off += 2;
+      var bytes = new Uint8Array(buffer, off, len); off += len;
+      return utf8Decode(bytes);
+    }
+    var version = i32();
+    var langCount = i32();
+    var hasUids = false;
+    var keyNames = [];
+    if (version === 2) {
+      hasUids = u8() !== 0;
+      var keyCount = i32();
+      for (var i = 0; i < keyCount; i++) {
+        if (hasUids) { off += 4; keyNames.push('UID_' + i); }
+        else keyNames.push(str());
+      }
+    }
+    var langs = [];
+    for (var l = 0; l < langCount; l++) {
+      langs.push(str());
+      off += 4; // tamaño de la entrada
+    }
+    if (version === 0 ||
+      (langs.length === 0)) {
+      // formatos antiguos: no soportados más allá de la cabecera
+      return { version: version, languages: langs, keys: {}, unsupported: true };
+    }
+    var keys = {};
+    for (var li = 0; li < langs.length; li++) {
+      var lang = langs[li];
+      var v = i32();
+      if (v > 0) off += 1; // hasUids
+      off += 2 + dv.getUint16(off, false); // nombre de idioma repetido
+      var n = i32();
+      for (var k = 0; k < n; k++) {
+        var name = version === 0 ? str() : keyNames[k];
+        var value = str();
+        if (!name) continue;
+        if (!keys[name]) keys[name] = {};
+        keys[name][lang] = value;
+      }
+    }
+    return { version: version, languages: langs, keys: keys, unsupported: false };
+  }
+
+
+  /* ------------------- geometría de skin (parámetros BOX) ------------------ */
+
+  /**
+   * Pivotes del modelo de jugador estándar (Java / Blockbench, y = 0 en los pies).
+   * Los parámetros BOX de LCE guardan la esquina mínima de la caja relativa a
+   * estos pivotes, con el eje Y invertido.
+   */
+  var BOX_PIVOT = {
+    HEAD: [0, 24, 0],
+    HEADWEAR: [0, 24, 0],
+    BODY: [0, 24, 0],
+    JACKET: [0, 24, 0],
+    WAIST: [0, 24, 0],
+    BODYARMOR: [0, 24, 0],
+    BELT: [0, 24, 0],
+    ARM0: [-5, 22, 0],
+    ARM1: [5, 22, 0],
+    SLEEVE0: [-5, 22, 0],
+    SLEEVE1: [5, 22, 0],
+    ARMARMOR0: [-5, 22, 0],
+    ARMARMOR1: [5, 22, 0],
+    LEG0: [-2, 12, 0],
+    LEG1: [2, 12, 0],
+    PANTS0: [-2, 12, 0],
+    PANTS1: [2, 12, 0],
+    LEGGING0: [-2, 12, 0],
+    LEGGING1: [2, 12, 0],
+    SOCK0: [-2, 12, 0],
+    SOCK1: [2, 12, 0],
+    BOOT0: [-2, 12, 0],
+    BOOT1: [2, 12, 0]
+  };
+
+  /** Tipos válidos (TU7 + TU34 + TU58 + TU60) */
+  var BOX_TYPES = Object.keys(BOX_PIVOT);
+  /** bits de la máscara de armadura (TU31+): la caja se oculta al llevar esa pieza */
+  var ARMOR = { HELMET: 1, CHEST: 2, LEGS: 4, BOOTS: 8 };
+
+  function armorLabel(mask) {
+    if (!mask) return 'siempre visible';
+    var out = [];
+    if (mask & ARMOR.HELMET) out.push('casco');
+    if (mask & ARMOR.CHEST) out.push('peto');
+    if (mask & ARMOR.LEGS) out.push('gregüesco');
+    if (mask & ARMOR.BOOTS) out.push('botas');
+    return 'oculta con ' + out.join(', ');
+  }
+
+  var OVERLAY_BOX_TYPES = ['HEADWEAR', 'JACKET', 'SLEEVE0', 'SLEEVE1', 'PANTS0', 'PANTS1', 'WAIST'];
+
+  /**
+   * Convierte una caja del modelo (esquina mínima y máxima en coordenadas de
+   * Blockbench, y hacia arriba) al string BOX de LCE.
+   *   BOX: "TIPO X Y Z ANCHO ALTO FONDO U V [mascaraArmadura] [espejo] [inflado]"
+   */
+  function boxToString(box) {
+    var parts = [
+      box.type,
+      fmt(box.pos[0]), fmt(box.pos[1]), fmt(box.pos[2]),
+      fmt(box.size[0]), fmt(box.size[1]), fmt(box.size[2]),
+      fmt(box.uv[0]), fmt(box.uv[1])
+    ];
+    if (box.armor || box.mirror || box.inflate) {
+      parts.push(String(box.armor || 0), box.mirror ? '1' : '0');
+      if (box.inflate) parts.push(fmt(box.inflate));
+    }
+    return parts.join(' ');
+  }
+
+  /** string BOX -> objeto {type,pos,size,uv,armor,mirror,inflate} (o null) */
+  function parseBox(str) {
+    var parts = String(str).trim().split(/\s+/);
+    if (parts.length < 9) return null;
+    var type = parts[0].toUpperCase();
+    if (!BOX_PIVOT[type]) return null;
+    var n = parts.slice(1).map(Number);
+    if (n.slice(0, 8).some(function (v) { return !isFinite(v); })) return null;
+    return {
+      type: type,
+      pos: [n[0], n[1], n[2]],
+      size: [n[3], n[4], n[5]],
+      uv: [n[6], n[7]],
+      armor: isFinite(n[8]) ? n[8] : 0,
+      mirror: n[9] === 1,
+      inflate: isFinite(n[10]) ? n[10] : 0
+    };
+  }
+
+  function fmt(n) {
+    var v = Math.round(n * 100) / 100;
+    return String(v).replace(',', '.');
+  }
+
+  /** caja (min/max en coordenadas del modelo) -> {pos, size} relativo al pivote */
+  function cubeToBox(type, min, max, uv, opts) {
+    opts = opts || {};
+    var pivot = BOX_PIVOT[type];
+    if (!pivot) throw new Error('Tipo de caja no válido: ' + type);
+    return {
+      type: type,
+      pos: [min[0] - pivot[0], pivot[1] - max[1], min[2] - pivot[2]],
+      size: [Math.abs(max[0] - min[0]), Math.abs(max[1] - min[1]), Math.abs(max[2] - min[2])],
+      uv: [uv[0], uv[1]],
+      armor: opts.armor || 0,
+      mirror: !!opts.mirror,
+      inflate: opts.inflate || 0
+    };
+  }
+
+  /** devuelve las cajas en coordenadas absolutas del modelo (para dibujar) */
+  function boxToModelSpace(box) {
+    var pivot = BOX_PIVOT[box.type] || [0, 24, 0];
+    var x = pivot[0] + box.pos[0];
+    var yTop = pivot[1] - box.pos[1];
+    var z = pivot[2] + box.pos[2];
+    return {
+      type: box.type,
+      min: [x, yTop - box.size[1], z],
+      max: [x + box.size[0], yTop, z + box.size[2]],
+      uv: box.uv,
+      inflate: box.inflate || 0
+    };
+  }
+
+  /* ------------------------- construcción del pack ----------------------- */
+
+  /** piezas de armadura/hand que se pueden desplazar con OFFSET (TU33 + TU58) */
+  var OFFSET_TYPES = ['HELMET', 'CHEST', 'SHOULDER0', 'SHOULDER1', 'WAIST',
+    'PANTS0', 'PANTS1', 'BOOT0', 'BOOT1', 'TOOL0', 'TOOL1',
+    'HEAD', 'BODY', 'ARM0', 'ARM1', 'LEG0', 'LEG1'];
+
+  var ANIM = {
+    NONE: 0x00000000,
+    MODERN_WIDE_MODEL: 0x00040000, // skin 64x64, brazos anchos (Steve)
+    SLIM_MODEL: 0x00080000,        // skin 64x64, brazos finos (Alex)
+    HIDE_ARMOR: 0x00000100         // bit 9: no dibujar ninguna armadura (TU17)
+  };
+
+  var GAME_FLAGS = {
+    UNFAIR: 0x01,       // bit 1: no permitida en Battle Mode con «Allow All Skins» desactivado
+    CREATURE: 0x16,
+    HUMAN: 0x18,
+    FEMALE_HUMAN: 0x1a,
+    MALE_HUMAN: 0x1c,
+    ROBOT: 0x0e
+  };
+
+  function randomSkinId(used) {
+    used = used || [];
+    var id;
+    do {
+      id = 100000 + Math.floor(Math.random() * 99899999);
+    } while (used.indexOf(id) !== -1);
+    return id;
+  }
+
+  function randomPackId() {
+    return 8000 + Math.floor(Math.random() * (0x00ffffff - 8000));
+  }
+
+  /**
+   * Construye un skin pack .pck completo (mismo esquema que PCK Studio:
+   * "0" InfoFile con PACKID/PACKVERSION + localisation.loc + skins dlcskinXXXXXXXX.png).
+   *
+   * @param {object} o
+   * @param {string} o.packName
+   * @param {number} [o.packId]
+   * @param {number} [o.packVersion]
+   * @param {Array}  o.skins  [{id,name,theme,png(Uint8Array),anim,gameFlags}]
+   * @param {boolean}[o.littleEndian] false = PS3 / 360 / Wii U
+   * @param {number} [o.pckType]
+   * @param {number} [o.xmlVersion]
+   * @param {number} [o.locVersion]
+   */
+  function buildSkinPack(o) {
+    var packName = o.packName || 'Mi skin pack';
+    var packId = o.packId == null ? randomPackId() : o.packId | 0;
+    var packVersion = o.packVersion == null ? 0 : o.packVersion | 0;
+    var skins = o.skins || [];
+    var locVersion = o.locVersion == null ? 2 : o.locVersion;
+
+    var assets = [];
+    assets.push({
+      filename: '0',
+      type: ASSET_TYPE.InfoFile,
+      data: new Uint8Array(0),
+      params: [['PACKID', String(packId)], ['PACKVERSION', String(packVersion)]]
+    });
+
+    var locKeys = {};
+    locKeys['IDS_DISPLAY_NAME'] = { 'en-EN': packName };
+
+    var skinAssets = [];
+    var usedIds = [];
+    skins.forEach(function (s) {
+      var id = s.id == null || usedIds.indexOf(s.id) !== -1 ? randomSkinId(usedIds) : s.id | 0;
+      usedIds.push(id);
+      var idStr = pad8(id);
+      var displayKey = 'IDS_dlcskin' + idStr + '_DISPLAYNAME';
+      var name = s.name || ('Skin ' + idStr);
+      locKeys[displayKey] = { 'en-EN': name };
+
+      var params = [['DISPLAYNAME', name], ['DISPLAYNAMEID', displayKey]];
+      if (s.theme) {
+        var themeKey = 'IDS_dlcskin' + idStr + '_THEMENAME';
+        locKeys[themeKey] = { 'en-EN': s.theme };
+        params.push(['THEMENAME', s.theme], ['THEMENAMEID', themeKey]);
+      }
+      var anim = s.anim == null ? ANIM.MODERN_WIDE_MODEL : s.anim;
+      if (s.hideArmor) anim |= ANIM.HIDE_ARMOR;
+      var flags = s.gameFlags == null ? GAME_FLAGS.HUMAN : s.gameFlags;
+      if (s.unfair) flags |= GAME_FLAGS.UNFAIR;
+      params.push(['ANIM', '0x' + hex(anim, 8)]);
+      params.push(['GAME_FLAGS', '0x' + hex(flags, 2)]);
+      params.push(['FREE', '1']);
+      // geometría personalizada: una entrada BOX por caja
+      (s.boxes || []).forEach(function (box) {
+        params.push(['BOX', boxToString(box)]);
+      });
+      // desplazamiento vertical de armadura / partes (OFFSET TIPO Y valor)
+      var offs = s.offsets || {};
+      Object.keys(offs).forEach(function (tipo) {
+        var v = Math.round(Number(offs[tipo]) || 0);
+        if (!v || OFFSET_TYPES.indexOf(tipo) < 0) return;
+        params.push(['OFFSET', tipo + ' Y ' + v]);
+      });
+
+      skinAssets.push({
+        filename: 'dlcskin' + idStr + '.png',
+        type: ASSET_TYPE.SkinFile,
+        data: toU8(s.png),
+        params: params,
+        id: id
+      });
+    });
+
+    assets.push({
+      filename: 'localisation.loc',
+      type: ASSET_TYPE.LocalisationFile,
+      data: writeLoc({ languages: ['en-EN'], keys: locKeys, version: locVersion }),
+      params: []
+    });
+    assets = assets.concat(skinAssets);
+
+    // Si alguna skin lleva BOX, el pack necesita XMLVERSION (2 por defecto, 3 si hay inflado)
+    var minXml = 0;
+    skins.forEach(function (s) {
+      if (s.boxes && s.boxes.length) minXml = Math.max(minXml, s.xmlVersion || 0);
+    });
+    var xmlVersion = Math.max(o.xmlVersion || 0, minXml);
+
+    var bytes = writePck({
+      pckType: o.pckType == null ? 3 : o.pckType,
+      xmlVersion: xmlVersion,
+      littleEndian: !!o.littleEndian,
+      assets: assets
+    });
+    return { bytes: bytes, assets: assets, packId: packId, skins: skinAssets, xmlVersion: xmlVersion };
+  }
+
+  /**
+   * Extrae las skins de un .pck ya existente (para poder editarlo/ampliarlo).
+   */
+  /** OFFSET "HELMET Y -2" -> {HELMET: -2} */
+  function parseOffsets(params) {
+    var out = {};
+    (params || []).forEach(function (pr) {
+      if (pr[0] !== 'OFFSET') return;
+      var m = /^([A-Z0-9]+)\s+[Yy]\s+(-?\d+)$/.exec(String(pr[1]).trim());
+      if (m) out[m[1]] = parseInt(m[2], 10);
+    });
+    return out;
+  }
+
+  function extractSkins(pck) {
+    var loc = null;
+    pck.assets.forEach(function (a) {
+      if (a.type === ASSET_TYPE.LocalisationFile && !loc) {
+        try { loc = readLoc(a.data); } catch (e) { loc = null; }
+      }
+    });
+    var skins = [];
+    pck.assets.forEach(function (a) {
+      if (a.type !== ASSET_TYPE.SkinFile) return;
+      var idMatch = /dlcskin(\d+)/i.exec(a.filename);
+      var displayKey = a.get('DISPLAYNAMEID');
+      var name = a.get('DISPLAYNAME') || '';
+      if ((!name || name === '') && loc && displayKey && loc.keys[displayKey]) {
+        name = loc.keys[displayKey]['en-EN'] || Object.values(loc.keys[displayKey])[0] || '';
+      }
+      var animStr = a.get('ANIM') || '0x0';
+      skins.push({
+        id: idMatch ? parseInt(idMatch[1], 10) : null,
+        name: name,
+        theme: a.get('THEMENAME') || '',
+        png: a.data,
+        anim: parseInt(animStr, 16) || 0,
+        gameFlags: parseInt(a.get('GAME_FLAGS') || '0x18', 16) || 0x18,
+        params: a.params,
+        offsets: parseOffsets(a.params),
+        hideArmor: !!(parseInt(a.get('ANIM') || '0x0', 16) & ANIM.HIDE_ARMOR),
+        unfair: !!(parseInt(a.get('GAME_FLAGS') || '0x18', 16) & GAME_FLAGS.UNFAIR),
+        xmlVersion: a.xmlVersion,
+        filename: a.filename
+      });
+    });
+    return { skins: skins, loc: loc };
+  }
+
+  return {
+    ASSET_TYPE: ASSET_TYPE,
+    ASSET_TYPE_NAME: ASSET_TYPE_NAME,
+    ANIM: ANIM,
+    GAME_FLAGS: GAME_FLAGS,
+    writePck: writePck,
+    readPck: readPck,
+    writeLoc: writeLoc,
+    readLoc: readLoc,
+    buildSkinPack: buildSkinPack,
+    extractSkins: extractSkins,
+    BOX_PIVOT: BOX_PIVOT,
+    BOX_TYPES: BOX_TYPES,
+    OVERLAY_BOX_TYPES: OVERLAY_BOX_TYPES,
+    ARMOR: ARMOR,
+    OFFSET_TYPES: OFFSET_TYPES,
+    parseOffsets: parseOffsets,
+    armorLabel: armorLabel,
+    boxToString: boxToString,
+    parseBox: parseBox,
+    cubeToBox: cubeToBox,
+    boxToModelSpace: boxToModelSpace,
+    randomSkinId: randomSkinId,
+    randomPackId: randomPackId,
+    pad8: pad8,
+    hex: hex
+  };
+});
+
+</script>
+<script>
+/* ============================================================
+   app.js — UI de SkinForge (Java/Bedrock → .pck de PS3)
+   ============================================================ */
+(function () {
+  'use strict';
+
+  const $ = (sel, root) => (root || document).querySelector(sel);
+  const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
+
+  const MAX_SAFE_SKIN_BYTES = 0x7fff; // 32767 — por encima, algunos packs crashean
+
+  /* ------------------------------- estado ------------------------------- */
+  const state = {
+    skins: [],           // {key,id,name,theme,model,png,w,h,bytes,src,thumbUrl,warn}
+    packName: 'Mis skins PS3',
+    packId: PCK.randomPackId(),
+    packVersion: 0,
+    target: 'ps3',       // 'ps3' (big endian) | 'modern' (little endian)
+    resolution: 'auto',  // 'auto' | '64x64' | '64x32' | 'orig'
+    xmlVersion: 0,
+    showArmor: false,
+    showBase: true,
+    showCapas: true,
+    lastBuild: null,
+    busy: false
+  };
+
+  let keySeq = 1;
+
+  /* ------------------------------- helpers ------------------------------ */
+  function toast(msg, kind) {
+    const box = $('#toasts');
+    const el = document.createElement('div');
+    el.className = 'toast ' + (kind || 'info');
+    el.innerHTML = msg;
+    while (box.children.length > 2) box.removeChild(box.firstChild);
+    box.appendChild(el);
+    setTimeout(() => {
+      el.classList.add('out');
+      setTimeout(() => el.remove(), 400);
+    }, kind === 'error' ? 7000 : 4200);
+  }
+
+  function humanSize(n) {
+    if (n < 1024) return n + ' B';
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+    return (n / 1024 / 1024).toFixed(2) + ' MB';
+  }
+
+  function loadImageBitmap(blob) {
+    if (window.createImageBitmap) {
+      return createImageBitmap(blob).catch(() => loadImageElement(blob));
+    }
+    return loadImageElement(blob);
+  }
+
+  function loadImageElement(blob) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => { resolve(img); setTimeout(() => URL.revokeObjectURL(url), 1000); };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('No se pudo leer la imagen')); };
+      img.src = url;
+    });
+  }
+
+  function canvasToPngBytes(canvas) {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob(async (blob) => {
+        if (!blob) return reject(new Error('No se pudo codificar el PNG'));
+        resolve(new Uint8Array(await blob.arrayBuffer()));
+      }, 'image/png');
+    });
+  }
+
+  function canvasToUrl(canvas) {
+    return canvas.toDataURL('image/png');
+  }
+
+  /* --------------------------- lectura de ZIP --------------------------- */
+  async function unzip(arrayBuffer) {
+    const u8 = new Uint8Array(arrayBuffer);
+    const dv = new DataView(arrayBuffer);
+    let eocd = -1;
+    const min = Math.max(0, u8.length - 22 - 65535);
+    for (let i = u8.length - 22; i >= min; i--) {
+      if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+    }
+    if (eocd < 0) throw new Error('El ZIP no es válido');
+    const count = dv.getUint16(eocd + 10, true);
+    let off = dv.getUint32(eocd + 16, true);
+    const entries = [];
+    for (let i = 0; i < count; i++) {
+      if (dv.getUint32(off, true) !== 0x02014b50) throw new Error('Directorio central del ZIP corrupto');
+      const method = dv.getUint16(off + 10, true);
+      const compSize = dv.getUint32(off + 20, true);
+      const nameLen = dv.getUint16(off + 28, true);
+      const extraLen = dv.getUint16(off + 30, true);
+      const commentLen = dv.getUint16(off + 32, true);
+      const localOff = dv.getUint32(off + 42, true);
+      const name = new TextDecoder('utf-8').decode(u8.subarray(off + 46, off + 46 + nameLen));
+      entries.push({ name: name.replace(/\\/g, '/'), method, compSize, localOff });
+      off += 46 + nameLen + extraLen + commentLen;
+    }
+    const out = [];
+    for (const e of entries) {
+      if (e.name.endsWith('/')) continue;
+      if (!e.name) continue;
+      if (dv.getUint32(e.localOff, true) !== 0x04034b50) throw new Error('Entrada ZIP corrupta: ' + e.name);
+      const nlen = dv.getUint16(e.localOff + 26, true);
+      const elen = dv.getUint16(e.localOff + 28, true);
+      const start = e.localOff + 30 + nlen + elen;
+      const raw = u8.subarray(start, start + e.compSize);
+      let data;
+      if (e.method === 0) {
+        data = raw.slice();
+      } else if (e.method === 8) {
+        if (typeof DecompressionStream === 'undefined') {
+          throw new Error('Tu navegador no soporta descompresión ZIP. Usa Chrome/Edge/Firefox recientes.');
+        }
+        const stream = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+        data = new Uint8Array(await new Response(stream).arrayBuffer());
+      } else {
+        throw new Error('Compresión ZIP no soportada (método ' + e.method + ')');
+      }
+      out.push({ name: e.name, data });
+    }
+    return out;
+  }
+
+  function decodeText(data) {
+    if (!data) return '';
+    try { return new TextDecoder('utf-8').decode(data).replace(/^\uFEFF/, ''); } catch (e) { return ''; }
+  }
+
+  function parseLang(text) {
+    const map = {};
+    text.split(/\r?\n/).forEach((line) => {
+      const idx = line.indexOf('=');
+      if (idx <= 0 || line.trim().startsWith('#')) return;
+      map[line.slice(0, idx).trim()] = line.slice(idx + 1).trim();
+    });
+    return map;
+  }
+
+  /* ------------------------ añadir skins a la lista --------------------- */
+  async function addSkinFromBlob(blob, opts) {
+    opts = opts || {};
+    const img = await loadImageBitmap(blob);
+    const sw = img.width, sh = img.height;
+    if (!sw || !sh) throw new Error('Imagen sin dimensiones');
+
+    // resolución de destino
+    let tw, th;
+    if (state.resolution === '64x64') { tw = 64; th = 64; }
+    else if (state.resolution === '64x32') { tw = 64; th = 32; }
+    else if (state.resolution === 'orig') { tw = sw; th = sh; }
+    else { // auto: respeta 2:1 (clásica) o cuadrada
+      if (Math.abs(sw / sh - 2) < 0.02) { tw = 64; th = 32; }
+      else { tw = 64; th = 64; }
+    }
+
+    const canvas = document.createElement('canvas');
+    canvas.width = tw; canvas.height = th;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, tw, th);
+    ctx.drawImage(img, 0, 0, tw, th);
+
+    const png = await canvasToPngBytes(canvas);
+    const model = opts.model || (th === 32 ? 'classic' : (Math.abs(sw / sh - 2) < 0.02 ? 'classic' : 'wide'));
+
+    const skin = {
+      key: 'k' + (keySeq++),
+      id: opts.id || null,
+      name: opts.name || 'Skin ' + state.skins.length + 1,
+      theme: opts.theme || '',
+      model: model, // 'wide' | 'slim' | 'classic'
+      png: png,
+      w: tw, h: th,
+      srcW: sw, srcH: sh,
+      src: opts.src || '',
+      thumbUrl: canvasToUrl(canvas),
+      warn: png.length > MAX_SAFE_SKIN_BYTES ? 'PNG grande (' + humanSize(png.length) + '): puede fallar en consola' : ''
+    };
+    state.skins.push(skin);
+    if (opts.thumbFromUpscaled) { /* noop */ }
+    return skin;
+  }
+
+  async function addSkinFromFile(file) {
+    const nameHint = file.name.replace(/\.[a-z0-9]+$/i, '');
+    return addSkinFromBlob(file, { name: nameHint, src: file.name });
+  }
+
+  /* --------------------------- importar .pck ---------------------------- */
+  async function importPck(file) {
+    const buf = await file.arrayBuffer();
+    const pck = PCK.readPck(buf);
+    const ext = PCK.extractSkins(pck);
+    if (!ext.skins.length) {
+      toast('Ese .pck no contiene skins (tipo 0). ¿Es un pack de texturas?', 'warn');
+    }
+    let added = 0;
+    for (const s of ext.skins) {
+      const blob = new Blob([s.png], { type: 'image/png' });
+      const model = (s.anim & PCK.ANIM.SLIM_MODEL) ? 'slim' : ((s.anim & PCK.ANIM.MODERN_WIDE_MODEL) ? 'wide' : 'classic');
+      const skin = await addSkinFromBlob(blob, { name: s.name || ('Skin ' + s.id), theme: s.theme, id: s.id, model, src: file.name });
+      if (skin) {
+        skin.offsets = s.offsets && Object.keys(s.offsets).length ? Object.assign({}, s.offsets) : {};
+        skin.hideArmor = !!s.hideArmor;
+        skin.unfair = !!s.unfair;
+      }
+      // recupera la geometría personalizada (parámetros BOX) del pack original
+      const boxParams = (s.params || []).filter((pr) => pr[0] === 'BOX').map((pr) => PCK.parseBox(pr[1])).filter(Boolean);
+      if (boxParams.length && skin) {
+        skin.model3d = {
+          fileName: file.name, boxes: boxParams, parts: boxParams.map((b) => ({ type: b.type })),
+          warnings: [], xmlVersion: pck.xmlVersion || 0, cubes: boxParams.length
+        };
+      }
+      added++;
+    }
+    // PACKID del pack original, si lo hay
+    const info = pck.assets.find((a) => a.type === PCK.ASSET_TYPE.InfoFile && a.get('PACKID'));
+    if (info && state.packId !== Number(info.get('PACKID'))) {
+      state.packId = Number(info.get('PACKID')) || state.packId;
+    }
+    if (pck.xmlVersion) state.xmlVersion = pck.xmlVersion;
+    toast('Importadas <b>' + added + '</b> skins de <code>' + file.name + '</code> (' +
+      (pck.littleEndian ? 'little endian' : 'big endian') + ', tipo ' + pck.pckType + ')', 'ok');
+    render();
+  }
+
+  /* --------------------- importar .zip / .mcpack ------------------------ */
+  async function importZip(file) {
+    const buf = await file.arrayBuffer();
+    const entries = await unzip(buf);
+    const byName = {};
+    entries.forEach((e) => { byName[e.name.toLowerCase()] = e; });
+
+    // textos de idioma (Bedrock)
+    let lang = {};
+    const enLang = entries.find((e) => /(^|\/)texts\/en_us\.lang$/i.test(e.name)) ||
+      entries.find((e) => /(^|\/)texts\/[a-z_]+\.lang$/i.test(e.name));
+    if (enLang) lang = parseLang(decodeText(enLang.data));
+
+    // skins.json (formato clásico de skin packs de Bedrock/PE)
+    const skinJsonEntries = entries.filter((e) => /(^|\/)skins\.json$/i.test(e.name));
+    let added = 0;
+
+    if (skinJsonEntries.length) {
+      for (const sj of skinJsonEntries) {
+        let json;
+        try { json = JSON.parse(decodeText(sj.data)); } catch (e) { continue; }
+        const list = Array.isArray(json.skins) ? json.skins : [];
+        const baseDir = sj.name.slice(0, sj.name.lastIndexOf('/') + 1);
+        for (const item of list) {
+          const texRel = (item.texture || '').replace(/^\.\//, '');
+          if (!texRel) continue;
+          const full = (baseDir + texRel).toLowerCase();
+          const entry = byName[full] || byName[texRel.toLowerCase()];
+          if (!entry) continue;
+          const locName = item.localization_name || '';
+          const display = lang[locName] || locName || texRel.replace(/\.[a-z0-9]+$/i, '');
+          const geo = String(item.geometry || '').toLowerCase();
+          const model = geo.includes('slim') ? 'slim' : (geo.includes('classic') || geo.includes('custom') ? 'wide' : 'wide');
+          const theme = json.localization_name ? (lang[json.localization_name] || json.localization_name) : '';
+          await addSkinFromBlob(new Blob([entry.data], { type: 'image/png' }), {
+            name: display, theme: theme, model: model, src: file.name + ' › ' + entry.name
+          });
+          added++;
+        }
+      }
+    }
+
+    if (!added) {
+      // sin skins.json: todas las PNG del zip, en orden
+      const pngs = entries.filter((e) => /\.png$/i.test(e.name) && !/(^|\/)(pack_icon|icon|comparison)\.png$/i.test(e.name));
+      pngs.sort((a, b) => a.name.localeCompare(b.name, 'en', { numeric: true }));
+      for (const p of pngs) {
+        const base = p.name.split('/').pop().replace(/\.png$/i, '');
+        // intenta usar el nombre del .lang si coincide con una clave
+        await addSkinFromBlob(new Blob([p.data], { type: 'image/png' }), {
+          name: lang[base] || lang['skin.' + base + '.name'] || base,
+          src: file.name + ' › ' + p.name,
+          model: 'wide'
+        });
+        added++;
+      }
+    }
+
+    if (!added) throw new Error('No se encontraron skins (.png / skins.json) dentro del ZIP');
+    toast('Importadas <b>' + added + '</b> skins desde <code>' + file.name + '</code>', 'ok');
+    render();
+  }
+
+  /**
+   * Importa un .bbmodel. La textura puede venir incrustada (data URL) o como
+   * ruta a un PNG aparte (lo normal si la has cambiado en Blockbench).
+   */
+  async function importBbmodel(file, pngDelLote, consumidos) {
+    const parsed = parseBbModel(await file.text());
+    const nombreTex = String(parsed.textureName || '').replace(/\.[a-z0-9]+$/i, '').toLowerCase();
+    const nombreSkin = parsed.name || file.name.replace(/\.bbmodel$/i, '');
+
+    let imagen = null;
+    let yaCargada = null;
+    if (parsed.textureUrl) {
+      imagen = dataUrlToBlob(parsed.textureUrl);
+    } else if (pngDelLote && pngDelLote.length) {
+      const igual = pngDelLote.find((f) => f.name.replace(/\.[a-z0-9]+$/i, '').toLowerCase() === nombreTex);
+      const elegida = igual || (pngDelLote.length === 1 ? pngDelLote[0] : null) ||
+        pngDelLote.find((f) => !consumidos.has(f));
+      if (elegida) {
+        consumidos.add(elegida);
+        yaCargada = state.skins.find((x) => x.src === elegida.name) || null;
+        imagen = yaCargada ? null : elegida;
+      }
+    }
+    if (!imagen && !yaCargada && nombreTex) {
+      yaCargada = state.skins.find((x) => (x.name || '').toLowerCase() === nombreTex) ||
+        state.skins.find((x) => (x.src || '').split('›').pop().trim().replace(/\.[a-z0-9]+$/i, '').toLowerCase() === nombreTex);
+    }
+
+    let skin = yaCargada;
+    if (!imagen && !skin) {
+      const c = document.createElement('canvas');
+      c.width = 64; c.height = 64;
+      const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+      skin = await addSkinFromBlob(blob, { name: nombreSkin, src: file.name });
+      toast('El <code>.bbmodel</code> apunta a <code>' + (parsed.textureName || 'una textura externa') +
+        '</code>: suéltala junto al modelo, o carga la PNG antes', 'warn');
+    }
+    if (!skin) skin = await addSkinFromBlob(imagen, { name: nombreSkin, src: file.name });
+    await applyBbModelToSkin(skin, file);
+  }
+
+  /* ---------------------------- entrada ficheros ------------------------ */
+  async function handleFiles(fileList) {
+    if (state.busy) return;
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    state.busy = true;
+    setBusy(true);
+    let errors = 0;
+    // las PNG del mismo lote sirven de textura si el .bbmodel solo trae una ruta
+    const pngDelLote = files.filter((f) => /\.png$/i.test(f.name));
+    const consumidos = new Set();
+    for (const file of files) {
+      if (consumidos.has(file)) continue;
+      const lower = file.name.toLowerCase();
+      try {
+        if (/\.pck$/.test(lower)) await importPck(file);
+        else if (/\.(zip|mcpack|mcaddon|mcskin)$/.test(lower)) await importZip(file);
+        else if (/\.(png|jpe?g|webp)$/.test(lower)) { await addSkinFromFile(file); render(); }
+        else if (/\.bbmodel$/.test(lower)) { await importBbmodel(file, pngDelLote, consumidos); render(); }
+        else toast('Formato no soportado: <code>' + file.name + '</code>', 'warn');
+      } catch (err) {
+        errors++;
+        console.error(err);
+        toast('<b>' + file.name + '</b>: ' + err.message, 'error');
+      }
+    }
+    state.busy = false;
+    setBusy(false);
+    render();
+    if (!errors) toast('Listo: ' + state.skins.length + ' skin(s) en el pack', 'ok');
+  }
+
+  function setBusy(b) {
+    document.body.classList.toggle('busy', b);
+  }
+
+  /* -------------------------------- render ------------------------------ */
+  function animFor(skin) {
+    if (skin.model === 'slim') return PCK.ANIM.SLIM_MODEL;
+    if (skin.model === 'wide') return PCK.ANIM.MODERN_WIDE_MODEL;
+    return 0;
+  }
+
+  function render() {
+    renderList();
+    renderSettings();
+    renderSummary();
+  }
+
+  function renderList() {
+    const list = $('#skinList');
+    list.innerHTML = '';
+    $('#emptyState').style.display = state.skins.length ? 'none' : 'block';
+    $('#skinCount').textContent = state.skins.length;
+
+    state.skins.forEach((skin, i) => {
+      const card = document.createElement('div');
+      card.className = 'skin-card';
+      card.innerHTML = `
+        <div class="skin-thumb"><img alt="" src="${skin.thumbUrl}"><span class="badge">${skin.w}×${skin.h}</span></div>
+        <div class="skin-fields">
+          <label class="field">
+            <span>Nombre visible</span>
+            <input type="text" data-role="name" value="${escapeAttr(skin.name)}" maxlength="60" placeholder="Nombre de la skin">
+          </label>
+          <label class="field">
+            <span>Tema (opcional)</span>
+            <input type="text" data-role="theme" value="${escapeAttr(skin.theme)}" maxlength="60" placeholder="Ej. Clásico">
+          </label>
+          <div class="field-row">
+            <label class="field">
+              <span>Modelo</span>
+              <select data-role="model">
+                <option value="classic"${skin.model === 'classic' ? ' selected' : ''}>Clásico (64×32, brazos anchos)</option>
+                <option value="wide"${skin.model === 'wide' ? ' selected' : ''}>Moderno ancho (Steve)</option>
+                <option value="slim"${skin.model === 'slim' ? ' selected' : ''}>Moderno fino (Alex)</option>
+              </select>
+            </label>
+            <label class="field narrow">
+              <span>ID</span>
+              <input type="text" data-role="id" value="${skin.id ? skin.id : 'auto'}" inputmode="numeric" title="8 dígitos; se autorrellena si lo dejas en 'auto'">
+            </label>
+          </div>
+          <div class="model-row">
+            <span class="pill${skin.model3d ? ' model-on' : ''}">${skin.model3d
+              ? 'Modelo: ' + skin.model3d.boxes.length + ' cajas · ' + (skin.model3d.xmlVersion ? 'XMLVERSION ' + skin.model3d.xmlVersion : 'sin XMLVERSION')
+              : 'Modelo 3D: no'}</span>
+            <button class="btn sm ghost" data-role="bbmodel">${skin.model3d ? 'Cambiar .bbmodel' : '+ .bbmodel'}</button>
+            ${skin.model3d && skin.model3d.boxes.some((b) => b.armor) ? '<span class="pill warn-pill" title="Cajas que se ocultan al llevar armadura">armadura: ' + skin.model3d.boxes.filter((b) => b.armor).length + ' ocultables</span>' : ''}
+            ${skin.model3d ? '<button class="icon-btn del" data-role="bbclear" title="Quitar modelo 3D">✕</button>' : ''}
+          </div>
+          <div class="skin-meta">
+            <span class="pill">PNG ${humanSize(skin.png.length)}</span>
+            <span class="pill">origen ${skin.srcW}×${skin.srcH}</span>
+            ${skin.warn ? '<span class="pill danger">' + escapeHtml(skin.warn) + '</span>' : ''}
+          </div>
+        </div>
+        <div class="skin-actions">
+          <button class="icon-btn doll-btn" title="Ver modelo">3D</button>
+          <button class="icon-btn up" title="Subir">↑</button>
+          <button class="icon-btn down" title="Bajar">↓</button>
+          <button class="icon-btn del" title="Quitar">✕</button>
+        </div>`;
+
+      // eventos
+      $('[data-role="name"]', card).addEventListener('input', (e) => { skin.name = e.target.value; renderSummary(); });
+      $('[data-role="theme"]', card).addEventListener('input', (e) => { skin.theme = e.target.value; });
+      $('[data-role="model"]', card).addEventListener('change', (e) => {
+        skin.model = e.target.value;
+        if (skin.model !== 'classic' && skin.h === 32) {
+          toast('Ojo: una skin 64×32 con modelo moderno se verá mal. Cambia la resolución a 64×64 al importar.', 'warn');
+        }
+      });
+      $('[data-role="id"]', card).addEventListener('change', (e) => {
+        const v = parseInt(e.target.value.replace(/\D/g, ''), 10);
+        if (!v || v < 1000 || v > 99999998) { skin.id = null; e.target.value = 'auto'; return; }
+        const dup = state.skins.some((s) => s !== skin && s.id === v);
+        if (dup) { toast('Ese ID ya está en uso', 'warn'); skin.id = null; e.target.value = 'auto'; return; }
+        skin.id = v;
+      });
+      const bbBtn = $('[data-role="bbmodel"]', card);
+      if (bbBtn) bbBtn.addEventListener('click', () => pickBbModel(skin));
+      const bbClear = $('[data-role="bbclear"]', card);
+      if (bbClear) bbClear.addEventListener('click', () => { skin.model3d = null; render(); });
+
+      $('.del', card).addEventListener('click', () => {
+        state.skins.splice(i, 1);
+        render();
+      });
+      $('.up', card).addEventListener('click', () => {
+        if (i === 0) return;
+        state.skins.splice(i - 1, 0, state.skins.splice(i, 1)[0]);
+        render();
+      });
+      $('.down', card).addEventListener('click', () => {
+        if (i === state.skins.length - 1) return;
+        state.skins.splice(i + 1, 0, state.skins.splice(i, 1)[0]);
+        render();
+      });
+      $('.doll-btn', card).addEventListener('click', () => openDoll(skin));
+
+      list.appendChild(card);
+    });
+  }
+
+  function renderSettings() {
+    const nameEl = $('#packName');
+    if (document.activeElement !== nameEl) nameEl.value = state.packName;
+    const idEl = $('#packId');
+    if (document.activeElement !== idEl) idEl.value = String(state.packId);
+    const verEl = $('#packVersion');
+    if (document.activeElement !== verEl) verEl.value = String(state.packVersion);
+    $$('input[name="target"]').forEach((r) => { r.checked = r.value === state.target; });
+    $('#resolution').value = state.resolution;
+    if ($('#xmlVersion')) $('#xmlVersion').value = String(state.xmlVersion);
+  }
+
+  function renderSummary() {
+    const skins = state.skins;
+    let total = 0;
+    skins.forEach((s) => { total += s.png.length; });
+    $('#sumSkins').textContent = skins.length;
+    $('#sumPng').textContent = humanSize(total);
+    const est = 4 + 4 + 40 * 2 + 12 + skins.length * 60 + 8 + total + 4096;
+    $('#sumEst').textContent = '≈ ' + humanSize(est);
+    const btn = $('#downloadBtn');
+    btn.disabled = skins.length === 0;
+    const withModel = skins.filter((s) => s.model3d).length;
+    const maxXml = Math.max.apply(null, skins.map((s) => (s.model3d ? s.model3d.xmlVersion || 0 : 0)).concat([state.xmlVersion || 0]));
+    const fmtEl = $('#sumFormat');
+    if (fmtEl) {
+      fmtEl.textContent = 'PCK 3 · ' + (state.target === 'ps3' ? 'BE' : 'LE') + (maxXml ? ' · XMLVERSION ' + maxXml : '');
+    }
+    let hint = '';
+    if (skins.length === 0) hint = 'Añade al menos una skin para poder exportar.';
+    else if (withModel) {
+      hint = withModel + ' skin(s) con modelo 3D → el pack saldrá con XMLVERSION ' + maxXml + '.';
+      if (withModel < skins.length) hint += ' Mezclar skins con y sin modelo puede dar problemas: pruébalo en la consola.';
+    }
+    $('#buildHint').textContent = hint;
+  }
+
+  /* --------------------------- previsualización ------------------------- */
+  const DOLL = {
+    // regiones de la textura clásica (64x64 y 64x32)
+    head: [8, 8, 8, 8],
+    hat: [40, 8, 8, 8],
+    body: [20, 20, 8, 12],
+    jacket: [20, 36, 8, 12],
+    armR: [44, 20, 4, 12],
+    armRsleeve: [44, 36, 4, 12],
+    armL: [36, 52, 4, 12],
+    armLsleeve: [52, 52, 4, 12],
+    legR: [4, 20, 4, 12],
+    legRpants: [0, 36, 4, 12],
+    legL: [20, 52, 4, 12],
+    legLpants: [0, 52, 4, 12]
+  };
+
+  function drawDoll(canvas, skin, scale) {
+    const s = scale || 10;
+    const modern = skin.h === 64;
+    const slim = skin.model === 'slim';
+    const armW = slim ? 3 : 4;
+    const W = (8 + 2 * armW) * s, H = 32 * s;
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, W, H);
+
+    const img = new Image();
+    img.onload = () => {
+      ctx.imageSmoothingEnabled = false;
+      const blit = (region, dx, dy, dw, dh, mirror) => {
+        if (!region) return;
+        const [sx, sy, sw, sh] = region;
+        if (sy + sh > img.height || sx + sw > img.width) return;
+        if (mirror) {
+          ctx.save();
+          ctx.translate((2 * dx + dw) * s, 0); // espejo en el mismo sitio
+          ctx.scale(-1, 1);
+          ctx.drawImage(img, sx, sy, sw, sh, dx * s, dy * s, dw * s, dh * s);
+          ctx.restore();
+        } else {
+          ctx.drawImage(img, sx, sy, sw, sh, dx * s, dy * s, dw * s, dh * s);
+        }
+      };
+      const cx = armW; // x del cuerpo: los brazos ocupan los extremos
+      // piernas
+      if (modern) {
+        blit(DOLL.legR, cx, 20, 4, 12);
+        blit(DOLL.legL, cx + 4, 20, 4, 12);
+        blit(DOLL.legRpants, cx, 20, 4, 12);
+        blit(DOLL.legLpants, cx + 4, 20, 4, 12);
+      } else {
+        blit(DOLL.legR, cx, 20, 4, 12);
+        blit(DOLL.legR, cx + 4, 20, 4, 12, true);
+      }
+      // cuerpo
+      blit(DOLL.body, cx, 8, 8, 12);
+      if (modern) blit(DOLL.jacket, cx, 8, 8, 12);
+      // brazos (el derecho del jugador queda a la izquierda de la imagen)
+      if (modern) {
+        blit(slim ? [44, 20, 3, 12] : DOLL.armR, cx - armW, 8, armW, 12);
+        blit(slim ? [44, 36, 3, 12] : DOLL.armRsleeve, cx - armW, 8, armW, 12);
+        blit(slim ? [36, 52, 3, 12] : DOLL.armL, cx + 8, 8, armW, 12);
+        blit(slim ? [52, 52, 3, 12] : DOLL.armLsleeve, cx + 8, 8, armW, 12);
+      } else {
+        blit(DOLL.armR, cx - armW, 8, armW, 12);
+        blit(DOLL.armR, cx + 8, 8, armW, 12, true);
+      }
+      // cabeza (encima de todo)
+      blit(DOLL.head, cx, 0, 8, 8);
+      blit(DOLL.hat, cx, 0, 8, 8);
+    };
+    img.src = skin.thumbUrl;
+  }
+
+  let armorSeleccionada = null;   // pieza de armadura elegida en el editor
+  let repintar3D = null;          // la pone openDoll para refrescar la vista
+
+  const PIEZAS_ARMADURA = [
+    ['HELMET', 'Casco'], ['CHEST', 'Peto'], ['SHOULDER0', 'Hombro der.'], ['SHOULDER1', 'Hombro izq.'],
+    ['WAIST', 'Cintura'], ['PANTS0', 'Gregüesco der.'], ['PANTS1', 'Gregüesco izq.'],
+    ['BOOT0', 'Bota der.'], ['BOOT1', 'Bota izq.']
+  ];
+
+  /** editor completo del modal: cajas (máscara) + armadura (OFFSET y flags) */
+  function renderEditor(skin) {
+    const host = $('#boxEditor');
+    if (!host) return;
+    host.innerHTML = '';
+
+    if (skin.model3d) {
+      const boxes = skin.model3d.boxes;
+      const piezas = [[1, 'Casco'], [2, 'Peto'], [4, 'Gregüesco'], [8, 'Botas']];
+      const wrap = document.createElement('div');
+      wrap.className = 'be-boxes';
+      wrap.innerHTML =
+        '<div class="be-head"><span>Se oculta la caja al llevar:</span>' +
+          '<button class="btn sm ghost" data-preset="all">Todo</button>' +
+          '<button class="btn sm ghost" data-preset="overlay">Solo capas</button>' +
+          '<button class="btn sm ghost" data-preset="none">Ninguna</button>' +
+        '</div>' +
+        boxes.map((b, i) => {
+          const ms = PCK.boxToModelSpace(b);
+          const size = [ms.max[0] - ms.min[0], ms.max[1] - ms.min[1], ms.max[2] - ms.min[2]]
+            .map((v) => Math.round(v)).join('×');
+          const parte = (skin.model3d.parts && skin.model3d.parts[i]) || {};
+          const etiqueta = parte.name && parte.name !== b.type ? '«' + escapeHtml(parte.name) + '» ' : '';
+          return '<div class="box-row" data-i="' + i + '">' +
+            '<div><div><span class="be-type">' + b.type + '</span> <span class="be-size">' + etiqueta + size + '</span></div>' +
+            '<div class="be-size" data-role="label">' + PCK.armorLabel(b.armor || 0) + '</div></div>' +
+            '<div class="be-mask">' + piezas.map(([bit, txt]) =>
+              '<label class="arm"><input type="checkbox" data-bit="' + bit + '"' +
+              ((b.armor || 0) & bit ? ' checked' : '') + '>' + txt + '</label>').join('') +
+            '</div></div>';
+        }).join('');
+      host.appendChild(wrap);
+
+      const refresh = () => {
+        drawModel3D($('#dollCanvas'), skin);
+        boxes.forEach((b, i) => {
+          const row = wrap.querySelector('.box-row[data-i="' + i + '"] [data-role="label"]');
+          if (row) row.textContent = PCK.armorLabel(b.armor || 0);
+        });
+      };
+      wrap.querySelectorAll('.box-row').forEach((row) => {
+        const i = Number(row.dataset.i);
+        row.querySelectorAll('input[data-bit]').forEach((chk) => {
+          chk.addEventListener('change', () => {
+            let mask = 0;
+            row.querySelectorAll('input[data-bit]').forEach((c) => { if (c.checked) mask |= Number(c.dataset.bit); });
+            boxes[i].armor = mask;
+            refresh();
+          });
+        });
+      });
+      wrap.querySelectorAll('[data-preset]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const modo = btn.dataset.preset;
+          boxes.forEach((b) => {
+            if (modo === 'all') b.armor = 15;
+            else if (modo === 'none') b.armor = 0;
+            else b.armor = ARMOR_OF_TYPE[b.type] || 0;
+          });
+          renderEditor(skin);
+        });
+      });
+    }
+
+    // ---------- armadura del jugador: OFFSET + flags ----------
+    const off = document.createElement('div');
+    off.className = 'armor-offsets';
+    off.innerHTML =
+      '<div class="be-head"><span>Mover la armadura <code>OFFSET</code> (negativo = más arriba):</span></div>' +
+      '<div class="off-grid">' +
+        PIEZAS_ARMADURA.map(([tipo, txt]) =>
+          '<label class="off"><span>' + txt + '</span>' +
+          '<input type="number" step="1" inputmode="numeric" data-off="' + tipo + '" value="' +
+          Math.round(Number((skin.offsets || {})[tipo]) || 0) + '"></label>').join('') +
+      '</div>' +
+      '<div class="be-flags">' +
+        '<label class="arm"><input type="checkbox" id="hideArmorChk"' + (skin.hideArmor ? ' checked' : '') +
+          '> Ocultar toda la armadura</label>' +
+        '<label class="arm"><input type="checkbox" id="unfairChk"' + (skin.unfair ? ' checked' : '') +
+          '> No válida en Battle Mode</label>' +
+      '</div>' +
+      '<div class="armor-hint">' +
+        (skin.model3d
+          ? 'Si la armadura se hunde en tu geometría, súbela con el valor de esa pieza (p. ej. casco <b>-2</b> en una cabeza de 10). Funciona desde <b>TU33</b> (TU58 para las partes base).'
+          : 'El <code>OFFSET</code> mueve la armadura del jugador; se aplica a la skin aunque no tenga modelo.') +
+      '</div>';
+    host.appendChild(off);
+
+    skin.offsets = skin.offsets || {};
+    off.querySelectorAll('.off').forEach((fila) => {
+      const inp = fila.querySelector('input[data-off]');
+      fila.addEventListener('click', (ev) => {
+        if (ev.target === inp) return;
+        armorSeleccionada = armorSeleccionada === inp.dataset.off ? null : inp.dataset.off;
+        const chkArmor = $('#showArmorChk');
+        if (armorSeleccionada && chkArmor && !chkArmor.checked) {
+          chkArmor.checked = true;
+          state.showArmor = true;
+        }
+        if (repintar3D) repintar3D();
+      });
+    });
+    off.querySelectorAll('input[data-off]').forEach((inp) => {
+      inp.addEventListener('focus', () => { armorSeleccionada = inp.dataset.off; if (repintar3D) repintar3D(); });
+      inp.addEventListener('change', () => {
+        const v = Math.round(Number(inp.value) || 0);
+        if (v) skin.offsets[inp.dataset.off] = v;
+        else delete skin.offsets[inp.dataset.off];
+        inp.value = String(v);
+        render();
+      });
+    });
+    const hideChk = off.querySelector('#hideArmorChk');
+    if (hideChk) hideChk.addEventListener('change', () => { skin.hideArmor = hideChk.checked; render(); });
+    const unfairChk = off.querySelector('#unfairChk');
+    if (unfairChk) unfairChk.addEventListener('change', () => { skin.unfair = unfairChk.checked; render(); });
+  }
+
+  function openDoll(skin) {
+    const overlay = $('#dollOverlay');
+    overlay.classList.add('show', 'with-boxes');
+    $('#dollName').textContent = skin.name || 'Skin';
+    const c = $('#dollCanvas');
+    const note = $('#dollNote');
+    const boxes = skin.model3d ? skin.model3d.boxes : standardBoxesFor(skin);
+    armorSeleccionada = null;
+
+    const verArmadura = () => {
+      const chk = $('#showArmorChk');
+      return !!(chk && chk.checked);
+    };
+
+    const pintar = (sel) => {
+      const chkB = $('#showBaseChk'), chkC = $('#showCapasChk');
+      drawModel3D(c, skin, {
+        boxes: boxes,
+        selected: sel,
+        base: chkB ? chkB.checked : true,
+        capas: chkC ? chkC.checked : true,
+        piezas: verArmadura() ? undefined : []   // la armadura solo si la pides
+      });
+      repintar3D = () => pintar(armorSeleccionada);
+      document.querySelectorAll('input[data-off]').forEach((inp) => {
+        const fila = inp.closest('.off');
+        if (fila) fila.classList.toggle('sel', inp.dataset.off === sel);
+      });
+    };
+
+    if (skin.model3d) {
+      $('#dollMeta').textContent = skin.w + '×' + skin.h + ' · modelo 3D: ' + boxes.length +
+        ' cajas · XMLVERSION ' + skin.model3d.xmlVersion;
+      if (note) {
+        const w = skin.model3d.warnings || [];
+        note.innerHTML = (w.length
+          ? '<b>Avisos del modelo</b><ul>' + w.slice(0, 6).map((x) => '<li>' + escapeHtml(x.text) + '</li>').join('') + '</ul>'
+          : '') +
+          '<span class="muted">Arrastra las piezas azules de la vista 3D para mover la armadura.</span>';
+      }
+    } else {
+      $('#dollMeta').textContent = skin.w + '×' + skin.h + ' · ' + skin.model + ' · ' + humanSize(skin.png.length);
+      if (note) {
+        note.innerHTML = '<span class="muted">Vista 3D con el modelo estándar y su armadura. ' +
+          'Añade un <code>.bbmodel</code> para geometría personalizada.</span>';
+      }
+    }
+
+    const chk = $('#showArmorChk');
+    if (chk) {
+      chk.checked = !!state.showArmor;
+      chk.onchange = () => {
+        state.showArmor = chk.checked;
+        pintar(armorSeleccionada);
+        render();
+      };
+    }
+    const chkBase = $('#showBaseChk');
+    if (chkBase) {
+      chkBase.checked = state.showBase !== false;
+      chkBase.onchange = () => { state.showBase = chkBase.checked; pintar(armorSeleccionada); };
+    }
+    const chkCapas = $('#showCapasChk');
+    if (chkCapas) {
+      chkCapas.checked = state.showCapas !== false;
+      chkCapas.onchange = () => { state.showCapas = chkCapas.checked; pintar(armorSeleccionada); };
+    }
+
+    renderEditor(skin);
+    pintar(null);
+
+    // arrastrar piezas de armadura
+    initArmorDrag(c, skin, (tipo, valor, inicioArrastre) => {
+      armorSeleccionada = tipo;
+      if (inicioArrastre) {
+        pintar(tipo);
+        return;
+      }
+      skin.offsets = skin.offsets || {};
+      if (valor) skin.offsets[tipo] = valor; else delete skin.offsets[tipo];
+      const inp = document.querySelector('input[data-off="' + tipo + '"]');
+      if (inp) inp.value = String(valor);
+      pintar(tipo);
+      render();
+    });
+
+    $('#dollClose').onclick = () => overlay.classList.remove('show');
+    overlay.onclick = (e) => { if (e.target === overlay) overlay.classList.remove('show'); };
+  }
+
+
+  /* ------------------------------ construir ----------------------------- */
+  function buildPack() {
+    const skins = state.skins.map((s) => ({
+      id: s.id || undefined,
+      name: s.name || 'Skin',
+      theme: s.theme || '',
+      png: s.png,
+      anim: animFor(s),
+      gameFlags: PCK.GAME_FLAGS.HUMAN,
+      boxes: s.model3d ? s.model3d.boxes : null,
+      xmlVersion: s.model3d ? s.model3d.xmlVersion : 0,
+      offsets: s.offsets || null,
+      hideArmor: !!s.hideArmor,
+      unfair: !!s.unfair
+    }));
+    const packId = clampInt(state.packId, 0, 0x00ffffff, PCK.randomPackId());
+    return PCK.buildSkinPack({
+      packName: state.packName || 'Mi skin pack',
+      packId: packId,
+      packVersion: clampInt(state.packVersion, 0, 0xffffff, 0),
+      skins: skins,
+      littleEndian: state.target === 'modern',
+      pckType: 3,
+      xmlVersion: state.xmlVersion,
+      locVersion: 2
+    });
+  }
+
+  function clampInt(v, min, max, fallback) {
+    const n = Number(v);
+    if (!isFinite(n)) return fallback;
+    return Math.min(max, Math.max(min, Math.round(n)));
+  }
+
+  function verify(bytes) {
+    const p = PCK.readPck(bytes);
+    const skins = p.assets.filter((a) => a.type === PCK.ASSET_TYPE.SkinFile);
+    const ok = skins.length === state.skins.length;
+    return {
+      ok: ok,
+      pck: p,
+      text: ok
+        ? '✓ Estructura verificada: ' + p.assets.length + ' archivos, ' + skins.length + ' skins, ' +
+          (p.littleEndian ? 'little' : 'big') + ' endian, tipo ' + p.pckType
+        : '✗ La verificación no cuadra'
+    };
+  }
+
+  function download(bytes, filename) {
+    const blob = new Blob([bytes], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  }
+
+  function safeFileName(name) {
+    return (name || 'skinpack').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim().slice(0, 60) || 'skinpack';
+  }
+
+  /* -------------------------------- eventos ----------------------------- */
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+  function escapeAttr(str) { return escapeHtml(str).replace(/\n/g, ' '); }
+
+  let bbInput = null;
+  let bbPendingKey = null;
+
+  function pickBbModel(skin) {
+    if (!bbInput) {
+      bbInput = document.createElement('input');
+      bbInput.type = 'file';
+      bbInput.accept = '.bbmodel,application/json';
+      bbInput.style.display = 'none';
+      document.body.appendChild(bbInput);
+      bbInput.addEventListener('change', async () => {
+        const file = bbInput.files[0];
+        bbInput.value = '';
+        if (!file || !bbPendingKey) return;
+        const skin = state.skins.find((x) => x.key === bbPendingKey);
+        if (!skin) return;
+        try {
+          await applyBbModelToSkin(skin, file);
+          render();
+        } catch (err) {
+          console.error(err);
+          toast('<b>' + file.name + '</b>: ' + err.message, 'error');
+        }
+      });
+    }
+    bbPendingKey = skin.key;
+    bbInput.click();
+  }
+
+  /** .bbmodel de ejemplo con la textura de la skin actual (o una plantilla vacía) */
+  function exampleBbmodel(skin) {
+    const w = skin ? skin.w : 64, h = skin ? skin.h : 64;
+    const classic = h === 32;
+    const tex = skin ? skin.thumbUrl : blankSkinDataUrl(64, 64);
+    const name = (skin && skin.name) ? skin.name : 'Jugador';
+    const nuevoUuid = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID()
+      : 'u' + Date.now().toString(16) + Math.random().toString(16).slice(2, 10));
+    // desplegado estándar de caja (box UV): sin esto la textura se ve mal en Blockbench
+    const caras = (from, to, uv) => {
+      const w = Math.abs(to[0] - from[0]), h = Math.abs(to[1] - from[1]), d = Math.abs(to[2] - from[2]);
+      const u = uv[0], v = uv[1];
+      return {
+        north: { uv: [u + d, v + d, u + d + w, v + d + h] },
+        east: { uv: [u, v + d, u + d, v + d + h] },
+        south: { uv: [u + d + w, v + d, u + 2 * d + w, v + d + h] },
+        west: { uv: [u + 2 * d + w, v + d, u + 2 * (d + w), v + d + h] },
+        up: { uv: [u + d, v, u + d + w, v + d] },
+        down: { uv: [u + d + w, v, u + 2 * d + w, v + d] }
+      };
+    };
+    const cubo = (nombre, from, to, uv, armor, inflate) => ({
+      uuid: nuevoUuid(), type: 'cube',
+      name: nombre, from, to, origin: [0, 24, 0], uv_offset: uv, box_uv: true,
+      rotation: [0, 0, 0], inflate: inflate || 0, lce_armor: armor || 0,
+      faces: caras(from, to, uv)
+    });
+    // en 64x32 el brazo y la pierna izquierdos reutilizan la textura del derecho
+    const uvArm1 = classic ? [40, 16] : [32, 48];
+    const uvLeg1 = classic ? [0, 16] : [16, 48];
+    const elements = [
+        cubo('head', [-4, 24, -4], [4, 32, 4], [0, 0], 0),
+        cubo('hat', [-4, 24, -4], [4, 32, 4], [32, 0], 1, 0.5),
+        cubo('body', [-4, 12, -2], [4, 24, 2], [16, 16], 0),
+        cubo('jacket', [-4, 12, -2], [4, 24, 2], [16, 32], 2, 0.25),
+        cubo('right_arm', [-8, 12, -2], [-4, 24, 2], [40, 16], 0),
+        cubo('right_sleeve', [-8, 12, -2], [-4, 24, 2], [40, 32], 2, 0.25),
+        cubo('left_arm', [4, 12, -2], [8, 24, 2], uvArm1, 0),
+        cubo('left_sleeve', [4, 12, -2], [8, 24, 2], [48, 48], 2, 0.25),
+        cubo('right_leg', [-4, 0, -2], [0, 12, 2], [0, 16], 0),
+        cubo('right_pants', [-4, 0, -2], [0, 12, 2], [0, 32], 4, 0.25),
+        cubo('left_leg', [0, 0, -2], [4, 12, 2], uvLeg1, 0),
+        cubo('left_pants', [0, 0, -2], [4, 12, 2], [0, 48], 4, 0.25)
+    ];
+    // carpetas del outliner, como el modelo de jugador de Blockbench
+    const carpetas = {
+      head: ['head', 'hat'], body: ['body', 'jacket'],
+      right_arm: ['right_arm', 'right_sleeve'], left_arm: ['left_arm', 'left_sleeve'],
+      right_leg: ['right_leg', 'right_pants'], left_leg: ['left_leg', 'left_pants']
+    };
+    const grupos = Object.keys(carpetas).map((nombre) => ({
+      uuid: nuevoUuid(),
+      name: nombre,
+      origin: [0, 24, 0],
+      rotation: [0, 0, 0],
+      children: elements.filter((e) => carpetas[nombre].includes(e.name)).map((e) => e.uuid)
+    }));
+    return {
+      meta: { format_version: '5.0', model_format: 'java_block', box_uv: true },
+      name: name + ' (modelo)',
+      resolution: { width: w, height: h },
+      // Blockbench 5.0: datos del grupo en `groups`, árbol en `outliner`
+      groups: grupos.map((g) => ({ uuid: g.uuid, name: g.name, origin: g.origin, rotation: [0, 0, 0] })),
+      elements: elements,
+      outliner: grupos.map((g) => ({ uuid: g.uuid, isOpen: true, children: g.children })),
+      textures: [{
+        name: safeFileName(name) + '.png', id: '0', source: tex,
+        uv_width: w, uv_height: h, particle: false
+      }],
+      lce: {
+        nota: 'Modelo de ejemplo de SkinForge. Renombra los cubos como head, hat, body, jacket, right_arm, right_sleeve, left_arm, left_sleeve, right_leg, right_pants, left_leg, left_pants.',
+        armor_hint: 'lce_armor: 1 casco · 2 peto · 4 gregüesco · 8 botas (se suman)'
+      }
+    };
+  }
+
+  function blankSkinDataUrl(w, h) {
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    return canvasToUrl(c);
+  }
+
+  function downloadExampleModel() {
+    const skin = state.skins.find((x) => x.model3d) || state.skins[0] || null;
+    const json = exampleBbmodel(skin);
+    const nombre = safeFileName(skin ? skin.name : 'jugador-estandar') + '-modelo.bbmodel';
+    download(new TextEncoder().encode(JSON.stringify(json, null, '\t')), nombre);
+    toast('Descargado <b>' + nombre + '</b>: ábrelo en Blockbench, edítalo y vuelve a soltarlo aquí', 'ok');
+  }
+
+  function dataUrlToBlob(url) {
+    const comma = url.indexOf(',');
+    const head = url.slice(0, comma);
+    const b64 = url.slice(comma + 1);
+    const mime = (/data:([^;]+)/.exec(head) || [])[1] || 'image/png';
+    const bin = atob(b64);
+    const u8 = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    return new Blob([u8], { type: mime });
+  }
+
+  function init() {
+    initTabs();
+    initTex();
+
+    // dropzone + input
+    const input = $('#fileInput');
+    $('#pickBtn').addEventListener('click', () => input.click());
+    input.addEventListener('change', () => { handleFiles(input.files); input.value = ''; });
+
+    const dz = $('#dropzone');
+    ['dragenter', 'dragover'].forEach((ev) => dz.addEventListener(ev, (e) => {
+      e.preventDefault(); dz.classList.add('over');
+    }));
+    ['dragleave', 'drop'].forEach((ev) => dz.addEventListener(ev, (e) => {
+      e.preventDefault(); dz.classList.remove('over');
+    }));
+    dz.addEventListener('drop', (e) => { if (e.dataTransfer) handleFiles(e.dataTransfer.files); });
+
+    // drop en toda la ventana
+    window.addEventListener('dragover', (e) => { e.preventDefault(); });
+    window.addEventListener('drop', (e) => {
+      e.preventDefault();
+      if (!e.dataTransfer || !e.dataTransfer.files || !e.dataTransfer.files.length) return;
+      if (texActive()) return; // la pestaña de texturas ya gestiona su propio drop
+      handleFiles(e.dataTransfer.files);
+    });
+
+    // ajustes del pack
+    $('#packName').addEventListener('input', (e) => { state.packName = e.target.value; });
+    $('#packId').addEventListener('change', (e) => {
+      state.packId = clampInt(e.target.value, 0, 0x00ffffff, PCK.randomPackId());
+      e.target.value = state.packId;
+    });
+    $('#packVersion').addEventListener('change', (e) => {
+      state.packVersion = clampInt(e.target.value, 0, 0xffffff, 0);
+      e.target.value = state.packVersion;
+    });
+    $('#rerollId').addEventListener('click', () => {
+      state.packId = PCK.randomPackId();
+      $('#packId').value = state.packId;
+    });
+    $$('input[name="target"]').forEach((r) => r.addEventListener('change', () => {
+      state.target = r.value;
+      renderSummary();
+    }));
+    $('#resolution').addEventListener('change', (e) => {
+      state.resolution = e.target.value;
+      toast('La resolución se aplica a las skins que añadas a partir de ahora.', 'info');
+    });
+    $('#xmlVersion').addEventListener('change', (e) => { state.xmlVersion = Number(e.target.value); });
+
+    // acciones
+    $('#buildTestBtn').addEventListener('click', () => {
+      const built = buildPack();
+      const v = verify(built.bytes);
+      toast(v.text + ' · ' + humanSize(built.bytes.length), v.ok ? 'ok' : 'error');
+      showLog(built, v);
+    });
+
+    $('#downloadBtn').addEventListener('click', () => {
+      if (!state.skins.length) { toast('Añade al menos una skin', 'warn'); return; }
+      const built = buildPack();
+      const v = verify(built.bytes);
+      if (!v.ok) { toast(v.text, 'error'); return; }
+      state.lastBuild = built;
+      const fname = safeFileName(state.packName) + '.pck';
+      download(built.bytes, fname);
+      showLog(built, v);
+      toast('Descargado <b>' + fname + '</b> (' + humanSize(built.bytes.length) + ')', 'ok');
+    });
+
+    const ejemploBtn = $('#exampleModelBtn');
+    if (ejemploBtn) ejemploBtn.addEventListener('click', downloadExampleModel);
+
+    $('#clearBtn').addEventListener('click', () => {
+      if (!state.skins.length) return;
+      if (!confirm('¿Vaciar la lista de skins?')) return;
+      state.skins = [];
+      render();
+    });
+
+    // navegación suave
+    $$('a[href^="#"]').forEach((a) => a.addEventListener('click', (e) => {
+      const el = document.querySelector(a.getAttribute('href'));
+      if (!el) return;
+      e.preventDefault();
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }));
+
+    render();
+  }
+
+  function showLog(built, v) {
+    const wrap = $('#logWrap');
+    const p = v.pck;
+    const rows = p.assets.map((a) => {
+      const params = a.params.map((x) => x[0] + '=' + x[1]).join(' · ');
+      return '<div class="log-row">' +
+        '<div class="log-name"><code>' + escapeHtml(a.filename) + '</code>' +
+        '<span class="t">tipo ' + a.type + ' · ' + humanSize(a.data.length) + '</span></div>' +
+        (params ? '<div class="log-params">' + escapeHtml(params) + '</div>' : '') +
+        '</div>';
+    }).join('');
+    wrap.innerHTML = `
+      <div class="log-head">
+        <strong>${v.ok ? '✓' : '✗'} ${escapeHtml(v.text)}</strong>
+        <span class="muted">PCK tipo ${p.pckType} · XMLVERSION ${p.xmlVersion} · ${p.assets.length} entradas · ${humanSize(built.bytes.length)}</span>
+      </div>
+      <div class="log-rows">${rows}</div>`;
+    wrap.classList.add('show');
+  }
+
+
+
+  /* ============================================================
+     MODELOS 3D (.bbmodel de Blockbench → parámetros BOX de LCE)
+     ============================================================ */
+
+  const BOX_ALIASES = {
+    // inglés (Java / Blockbench)
+    head: 'HEAD', headwear: 'HEADWEAR', hat: 'HEADWEAR', helmet: 'HEADWEAR', headoverlay: 'HEADWEAR',
+    body: 'BODY', torso: 'BODY', chest: 'BODY', upperbody: 'BODY',
+    jacket: 'JACKET', bodyoverlay: 'JACKET', torsooverlay: 'JACKET',
+    waist: 'WAIST', hips: 'WAIST',
+    arm0: 'ARM0', rightarm: 'ARM0', armright: 'ARM0', rarm: 'ARM0',
+    arm1: 'ARM1', leftarm: 'ARM1', armleft: 'ARM1', larm: 'ARM1',
+    sleeve0: 'SLEEVE0', rightsleeve: 'SLEEVE0', rightsleeveoverlay: 'SLEEVE0',
+    sleeve1: 'SLEEVE1', leftsleeve: 'SLEEVE1', leftsleeveoverlay: 'SLEEVE1',
+    leg0: 'LEG0', rightleg: 'LEG0', legright: 'LEG0', rleg: 'LEG0',
+    leg1: 'LEG1', leftleg: 'LEG1', legleft: 'LEG1', lleg: 'LEG1',
+    pants0: 'PANTS0', rightpants: 'PANTS0', rightlegpants: 'PANTS0',
+    pants1: 'PANTS1', leftpants: 'PANTS1', leftlegpants: 'PANTS1',
+    bodyarmor: 'BODYARMOR', belt: 'BELT',
+    rightpad: 'ARM0', leftpad: 'ARM1', rightshoulder: 'ARM0', leftshoulder: 'ARM1',
+    shoulderpad: 'ARM0', pad0: 'ARM0', pad1: 'ARM1',
+    crest: 'HEADWEAR', cresta: 'HEADWEAR', plume: 'HEADWEAR', plume2: 'HEADWEAR',
+    armarmor0: 'ARMARMOR0', rightarmarmor: 'ARMARMOR0',
+    armarmor1: 'ARMARMOR1', leftarmarmor: 'ARMARMOR1',
+    sock0: 'SOCK0', rightsock: 'SOCK0', sock1: 'SOCK1', leftsock: 'SOCK1',
+    boot0: 'BOOT0', rightboot: 'BOOT0', boot1: 'BOOT1', leftboot: 'BOOT1',
+    legging0: 'LEGGING0', rightlegging: 'LEGGING0', legging1: 'LEGGING1', leftlegging: 'LEGGING1',
+    // castellano, por si el modelo está nombrado así
+    cabeza: 'HEAD', sombrero: 'HEADWEAR', cuerpo: 'BODY', torso2: 'BODY', chaqueta: 'JACKET',
+    cintura: 'WAIST', brazo0: 'ARM0', brazoderecho: 'ARM0', brazoder: 'ARM0',
+    brazo1: 'ARM1', brazoizquierdo: 'ARM1', brazoizq: 'ARM1',
+    manga0: 'SLEEVE0', manga1: 'SLEEVE1',
+    pierna0: 'LEG0', piernaderecha: 'LEG0', piernader: 'LEG0',
+    pierna1: 'LEG1', piernaizquierda: 'LEG1', piernaizq: 'LEG1',
+    pantalon0: 'PANTS0', pantalon1: 'PANTS1'
+  };
+
+  function normName(str) {
+    return String(str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
+  }
+
+  function guessBoxType(cubeName) {
+    const n = normName(cubeName);
+    if (!n) return null;
+    if (BOX_ALIASES[n]) return BOX_ALIASES[n];
+    // heurísticas por subcadena, de lo más específico a lo más genérico
+    const has = (w) => n.includes(w);
+    const left = has('left') || has('izq');
+    const right = has('right') || has('der') || !left;
+    if (has('headwear') || has('hat') || has('sombrero') || has('crest') || has('cresta') || has('plume') ||
+        (has('head') && has('overlay'))) return 'HEADWEAR';
+    if (has('head') || has('cabeza')) return 'HEAD';
+    if (has('jacket') || has('chaqueta') || (has('body') && has('overlay'))) return 'JACKET';
+    if (has('waist') || has('cintura')) return 'WAIST';
+    if (has('body') || has('torso') || has('cuerpo')) return 'BODY';
+    // hombreras y similares: se dibujan como una caja más del brazo
+    if (has('pad') || has('shoulder') || has('hombro')) return left ? 'ARM1' : 'ARM0';
+    if (has('sleeve') || has('manga')) return left ? 'SLEEVE1' : 'SLEEVE0';
+    if (has('arm') || has('brazo')) return left ? 'ARM1' : 'ARM0';
+    if (has('pants') || has('pantalon')) return left ? 'PANTS1' : 'PANTS0';
+    if (has('leg') || has('pierna')) return left ? 'LEG1' : 'LEG0';
+    return null;
+  }
+
+  /** qué pieza de armadura oculta cada tipo de caja (comportamiento de Java) */
+  const ARMOR_OF_TYPE = {
+    HEADWEAR: 1,              // casco
+    JACKET: 2, SLEEVE0: 2, SLEEVE1: 2, BODYARMOR: 2, ARMARMOR0: 2, ARMARMOR1: 2, BELT: 6,
+    PANTS0: 4, PANTS1: 4, LEGGING0: 4, LEGGING1: 4, SOCK0: 12, SOCK1: 12,
+    BOOT0: 8, BOOT1: 8
+  };
+
+  /** tamaño estándar de cada parte: la armadura se dibuja EN ESTE tamaño */
+  const STANDARD_SIZE = {
+    HEAD: [8, 8, 8], HEADWEAR: [8, 8, 8],
+    BODY: [8, 12, 4], JACKET: [8, 12, 4], WAIST: [8, 4, 4], BODYARMOR: [8, 12, 4], BELT: [8, 1, 4],
+    ARM0: [4, 12, 4], ARM1: [4, 12, 4], SLEEVE0: [4, 12, 4], SLEEVE1: [4, 12, 4],
+    ARMARMOR0: [4, 12, 4], ARMARMOR1: [4, 12, 4],
+    LEG0: [4, 12, 4], LEG1: [4, 12, 4], PANTS0: [4, 12, 4], PANTS1: [4, 12, 4],
+    LEGGING0: [4, 12, 4], LEGGING1: [4, 12, 4], SOCK0: [4, 12, 4], SOCK1: [4, 12, 4],
+    BOOT0: [4, 12, 4], BOOT1: [4, 12, 4]
+  };
+
+  /** pieza de armadura que "tapa" cada parte base (para el aviso) */
+  const ARMOR_FOR_PART = { HEAD: 1, BODY: 2, ARM0: 2, ARM1: 2, LEG0: 4, LEG1: 4 };
+
+  const AUTO_INFLATE = { HEADWEAR: 0.5, JACKET: 0.25, SLEEVE0: 0.25, SLEEVE1: 0.25, PANTS0: 0.25, PANTS1: 0.25, WAIST: 0.25 };
+
+  function parseBbModel(text) {
+    let json;
+    try { json = JSON.parse(text); } catch (e) { throw new Error('El .bbmodel no es un JSON válido'); }
+    const elements = Array.isArray(json.elements) ? json.elements : [];
+    if (!elements.length) throw new Error('El .bbmodel no tiene cubos (elements)');
+    let textureUrl = null;
+    const textures = Array.isArray(json.textures) ? json.textures : [];
+    const withImage = textures.find((t) => t && typeof t.source === 'string' && t.source.startsWith('data:image'));
+    if (withImage) textureUrl = withImage.source;
+    const conNombre = textures.find((t) => t && typeof t.name === 'string' && /\.(png|jpe?g)$/i.test(t.name));
+    const textureName = conNombre ? conNombre.name : (textures[0] && textures[0].name) || null;
+    // carpetas del outliner: uuid del cubo -> nombre del grupo más cercano.
+    // Se aceptan los tres esquemas que existen:
+    //   5.0  → outliner con {uuid, isOpen, children} + names en `groups`
+    //   4.x  → outliner con el grupo entero en línea (name incluido)
+    //   viejo → groups[].children con los uuid de los cubos
+    const defs = {};
+    (Array.isArray(json.groups) ? json.groups : []).forEach((g) => {
+      if (g && g.uuid) defs[g.uuid] = g.name || '';
+    });
+    const groupOf = {};
+    const nombres = [];
+    const walk = (nodo, padre) => {
+      if (typeof nodo === 'string') {
+        if (padre) groupOf[nodo] = padre;
+        return;
+      }
+      if (!nodo || typeof nodo !== 'object') return;
+      const nombre = nodo.name || defs[nodo.uuid] || padre || '';
+      if (nodo.name || defs[nodo.uuid]) nombres.push(nombre);
+      (nodo.children || []).forEach((hijo) => {
+        if (typeof hijo === 'string' && nombre) groupOf[hijo] = nombre;
+        else walk(hijo, nombre);
+      });
+    };
+    (Array.isArray(json.outliner) ? json.outliner : []).forEach((n) => walk(n, ''));
+    (Array.isArray(json.groups) ? json.groups : []).forEach((g) => {
+      (g.children || []).forEach((c) => {
+        if (typeof c === 'string' && !groupOf[c]) groupOf[c] = g.name || '';
+      });
+    });
+    return {
+      name: json.name || '',
+      resolution: json.resolution || null,
+      elements: elements,
+      textureUrl: textureUrl,
+      textureName: textureName,
+      hasEmbeddedTexture: !!textureUrl,
+      groupOf: groupOf,
+      groupNames: nombres.filter(Boolean)
+    };
+  }
+
+  /** convierte un .bbmodel a cajas BOX de LCE */
+  function bbToBoxes(parsed, skin) {
+    const warnings = [];
+    const boxes = [];
+    const usedTypes = {};
+    let needsV3 = false;
+    let slim = false;
+    let hasArmorHint = false;
+
+    parsed.elements.forEach((el) => {
+      const name = el.name || '';
+      const grupo = (parsed.groupOf && parsed.groupOf[el.uuid]) || '';
+      const type = guessBoxType(name) || (grupo ? guessBoxType(grupo) : null);
+      if (!type) {
+        warnings.push({
+          level: 'warn',
+          text: 'Cubo «' + (name || 'sin nombre') + '»' + (grupo ? ' (grupo «' + grupo + '»)' : '') +
+            ': no corresponde a ninguna parte del jugador (se ignora)'
+        });
+        return;
+      }
+      const from = el.from, to = el.to;
+      if (!Array.isArray(from) || !Array.isArray(to)) {
+        warnings.push({ level: 'warn', text: 'Cubo «' + name + '»: no tiene from/to (se ignora)' });
+        return;
+      }
+      const rot = el.rotation;
+      if (Array.isArray(rot) && rot.some((v) => Math.abs(v) > 0.001)) {
+        warnings.push({ level: 'warn', text: 'Cubo «' + name + '»: tiene rotación; LCE no puede rotar cajas (se coloca sin rotar)' });
+      }
+      // el juego trunca posiciones y tamaños a enteros: redondeamos ya aquí
+      const rawMin = [Math.min(from[0], to[0]), Math.min(from[1], to[1]), Math.min(from[2], to[2])];
+      const rawMax = [Math.max(from[0], to[0]), Math.max(from[1], to[1]), Math.max(from[2], to[2])];
+      const min = rawMin.map(Math.round);
+      const max = rawMax.map(Math.round);
+      if (min.some((v, i) => Math.abs(v - rawMin[i]) > 1e-6) || max.some((v, i) => Math.abs(v - rawMax[i]) > 1e-6)) {
+        warnings.push({ level: 'info', text: 'Cubo «' + name + '»: valores con decimales, LCE los trunca a enteros (se redondea)' });
+      }
+      const size = [max[0] - min[0], max[1] - min[1], max[2] - min[2]];
+      if (size.some((v) => v <= 0)) {
+        warnings.push({ level: 'warn', text: 'Cubo «' + name + '»: tamaño 0 (se ignora)' });
+        return;
+      }
+      if ((type === 'ARM0' || type === 'ARM1') && Math.round(size[0]) === 3) slim = true;
+
+      let uv = el.uv_offset;
+      if (!Array.isArray(uv) || el.box_uv === false) {
+        // UV por cara: aproximamos con la esquina mínima de las caras
+        const faces = el.faces || {};
+        let minU = Infinity, minV = Infinity;
+        Object.keys(faces).forEach((k) => {
+          const f = faces[k];
+          if (f && Array.isArray(f.uv) && f.uv.length === 4) {
+            minU = Math.min(minU, f.uv[0], f.uv[2]);
+            minV = Math.min(minV, f.uv[1], f.uv[3]);
+          }
+        });
+        if (isFinite(minU) && isFinite(minV)) {
+          uv = [minU, minV];
+          warnings.push({ level: 'info', text: 'Cubo «' + name + '»: UV por cara, se aproxima con la esquina ' + minU + ',' + minV });
+        } else {
+          uv = [0, 0];
+          warnings.push({ level: 'warn', text: 'Cubo «' + name + '»: sin UV, se usa 0,0' });
+        }
+      }
+
+      // por defecto, las capas overlay se ocultan con la armadura igual que en Java
+      // el .bbmodel puede traer su propia máscara en `lce_armor` (lo usan los ejemplos)
+      const armored = el.lce_armor == null ? null : Number(el.lce_armor);
+      const armor = armored != null && isFinite(armored) ? (armored | 0) : (ARMOR_OF_TYPE[type] || 0);
+      if (armored != null) hasArmorHint = true;
+      const std = STANDARD_SIZE[type];
+      if (std && (Math.round(size[0]) > std[0] || Math.round(size[1]) > std[1] || Math.round(size[2]) > std[2])) {
+        const pieza = ARMOR_FOR_PART[type];
+        warnings.push({
+          level: 'info',
+          text: 'Caja «' + name + '» (' + type + ') es más grande que la estándar (' + std.join('×') +
+            '): la armadura se dibuja en el modelo estándar y quedará dentro' +
+            (pieza ? ' — puede ocultarla con la pieza de armadura en el editor de cajas' : '')
+        });
+      }
+
+      const inflate = Number(el.inflate) || 0;
+      const auto = AUTO_INFLATE[type] || 0;
+      if (inflate && Math.abs(inflate - auto) > 0.001) needsV3 = true;
+
+      if (usedTypes[type]) {
+        warnings.push({ level: 'info', text: 'Cubo «' + name + '»: segunda caja del tipo ' + type + ' (se añade como caja extra)' });
+      }
+      usedTypes[type] = true;
+
+      boxes.push({ el, type, min, max, uv, inflate, name: name || grupo, armor, grupo });
+    });
+
+    if (!boxes.length) throw new Error('Ningún cubo del modelo coincide con una parte del jugador');
+
+    // 64x32: las cajas izquierdas reutilizan la textura y van espejadas
+    const classic = skin && skin.h === 32;
+
+    const finalBoxes = boxes.map((b) => {
+      const pivot = PCK.BOX_PIVOT[b.type];
+      // con XMLVERSION 3 las cajas overlay ya no se inflan solas: escribimos su
+      // inflado estándar (0.5 sombrero, 0.25 resto) si el modelo no trae otro
+      const inflate = needsV3 ? (b.inflate || AUTO_INFLATE[b.type] || 0) : 0;
+      const box = PCK.cubeToBox(b.type, b.min, b.max, b.uv, {
+        armor: b.armor,
+        inflate: inflate,
+        mirror: classic && (b.type === 'ARM1' || b.type === 'LEG1' || b.type === 'SLEEVE1' || b.type === 'PANTS1')
+      });
+      if (classic && (b.type === 'ARM1' || b.type === 'SLEEVE1')) box.uv = [40, 16];
+      if (classic && (b.type === 'LEG1' || b.type === 'PANTS1')) box.uv = [0, 16];
+      void pivot;
+      return { box: box, name: b.name, type: b.type, grupo: b.grupo };
+    });
+
+    return {
+      boxes: finalBoxes.map((f) => f.box),
+      parts: finalBoxes.map((f) => ({ type: f.type, name: f.name, grupo: f.grupo })),
+      warnings: warnings,
+      xmlVersion: needsV3 ? 3 : 2,
+      slim: slim,
+      hasArmorHint: hasArmorHint
+    };
+  }
+
+  async function applyBbModelToSkin(skin, file) {
+    const text = await file.text();
+    const parsed = parseBbModel(text);
+    const res = bbToBoxes(parsed, skin);
+    skin.model3d = {
+      fileName: file.name,
+      boxes: res.boxes,
+      armorHint: !!res.hasArmorHint,
+      parts: res.parts,
+      warnings: res.warnings,
+      xmlVersion: res.xmlVersion,
+      cubes: parsed.elements.length
+    };
+    if (res.slim && skin.model === 'wide') skin.model = 'slim';
+    if (!res.slim && skin.model === 'slim') skin.model = 'wide';
+    toast('Modelo <b>' + escapeHtml(file.name) + '</b>: ' + res.boxes.length + ' cajas · XMLVERSION ' + res.xmlVersion, 'ok');
+    if (res.warnings.length) toast(res.warnings.length + ' aviso(s) del modelo: <span class="muted">' + escapeHtml(res.warnings[0].text) + '</span>', 'warn');
+    return { skin, parsed, res };
+  }
+
+  /* ------------------------- vista 3D (isométrica) ----------------------- */
+  /** cajas estándar de armadura (se usan si el modelo no trae esa parte) */
+  const ARMOR_STD = {
+    HELMET: [[-4.5, 23.5, -4.5], [4.5, 32.5, 4.5]],
+    CHEST: [[-4.75, 11.25, -2.75], [4.75, 24.25, 2.75]],
+    SHOULDER0: [[-8.75, 11.5, -2.75], [-3.4, 20, 2.75]],
+    SHOULDER1: [[3.4, 11.5, -2.75], [8.75, 20, 2.75]],
+    WAIST: [[-4.5, 11.5, -2.5], [4.5, 16.5, 2.5]],
+    PANTS0: [[-4.4, -0.4, -2.4], [0.4, 11.6, 2.4]],
+    PANTS1: [[-0.4, -0.4, -2.4], [4.4, 11.6, 2.4]],
+    BOOT0: [[-4.5, -0.5, -2.5], [0.5, 4, 2.5]],
+    BOOT1: [[-0.5, -0.5, -2.5], [4.5, 4, 2.5]]
+  };
+
+  /** a qué parte de la skin corresponde cada pieza de armadura */
+  const ARMOR_SOURCE = {
+    HELMET: 'HEAD', CHEST: 'BODY', WAIST: 'BODY',
+    SHOULDER0: 'ARM0', SHOULDER1: 'ARM1',
+    PANTS0: 'LEG0', PANTS1: 'LEG1', BOOT0: 'LEG0', BOOT1: 'LEG1'
+  };
+
+  /** las 12 cajas del jugador estándar (para poder mover la armadura en cualquier skin) */
+  function standardBoxesFor(skin) {
+    const slim = skin.model === 'slim';
+    const classic = skin.model === 'classic' || skin.h === 32;
+    const anchoBrazo = slim ? 3 : 4;
+    const lista = [
+      ['HEAD', [-4, 24, -4], [4, 32, 4], [0, 0], 0],
+      ['HEADWEAR', [-4, 24, -4], [4, 32, 4], [32, 0], 1],
+      ['BODY', [-4, 12, -2], [4, 24, 2], [16, 16], 0],
+      ['JACKET', [-4, 12, -2], [4, 24, 2], [16, 32], 2],
+      ['ARM0', [-4 - anchoBrazo, 12, -2], [-4, 24, 2], [40, 16], 0],
+      ['SLEEVE0', [-4 - anchoBrazo, 12, -2], [-4, 24, 2], [40, 32], 2],
+      ['ARM1', [4, 12, -2], [4 + anchoBrazo, 24, 2], classic ? [40, 16] : [32, 48], 0],
+      ['SLEEVE1', [4, 12, -2], [4 + anchoBrazo, 24, 2], [48, 48], 2],
+      ['LEG0', [-4, 0, -2], [0, 12, 2], [0, 16], 0],
+      ['PANTS0', [-4, 0, -2], [0, 12, 2], [0, 32], 4],
+      ['LEG1', [0, 0, -2], [4, 12, 2], classic ? [0, 16] : [16, 48], 0],
+      ['PANTS1', [0, 0, -2], [4, 12, 2], [0, 48], 4]
+    ];
+    return lista.map(([type, min, max, uv, armor]) => PCK.cubeToBox(type, min, max, uv, {
+      armor: armor,
+      mirror: classic && /^(ARM1|LEG1|SLEEVE1|PANTS1)$/.test(type)
+    }));
+  }
+
+  /** caja de la pieza de armadura en coordenadas del modelo (y arriba) */
+  function armorPieceBox(tipo, boxes) {
+    const base = ARMOR_SOURCE[tipo];
+    const deLaSkin = (boxes || []).filter((b) => b.type === base)
+      .map((b) => PCK.boxToModelSpace(b))[0];
+    if (!deLaSkin) return ARMOR_STD[tipo];
+    const inf = 0.6;
+    let min = [deLaSkin.min[0] - inf, deLaSkin.min[1] - inf, deLaSkin.min[2] - inf];
+    let max = [deLaSkin.max[0] + inf, deLaSkin.max[1] + inf, deLaSkin.max[2] + inf];
+    if (tipo === 'BOOT0' || tipo === 'BOOT1') max = [max[0], deLaSkin.min[1] + 4, max[2]];
+    if (tipo === 'WAIST') min = [min[0], deLaSkin.max[1] - 5, min[2]];
+    if (tipo === 'SHOULDER0' || tipo === 'SHOULDER1') max = [max[0], deLaSkin.max[1] - 3, max[2]];
+    return [min, max];
+  }
+
+  /**
+   * Vista 3D isométrica con la skin y, encima, las piezas de armadura.
+   * Deja en canvas._lce3d lo necesario para poder arrastrarlas.
+   */
+  function drawModel3D(canvas, skin, opts) {
+    opts = opts || {};
+    const boxes = opts.boxes || (skin.model3d ? skin.model3d.boxes : []);
+    const scale = 9;
+    const W = 420, H = 420;
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, W, H);
+    canvas._lce3d = null;
+    if (!boxes.length) return;
+
+    const yaw = Math.PI - 0.6, pitch = 0.34;   // de frente: se ve la cara y el lado derecho
+    const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
+    const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
+    const cx = 8, cy = 16;
+    const project = (x, y, z) => {
+      const px = x - cx, py = y - cy, pz = z;
+      const rx = px * cosY - pz * sinY;
+      const rz = px * sinY + pz * cosY;
+      const ry = py * cosP - rz * sinP;
+      const depth = rz * cosP + py * sinP;
+      return { x: W / 2 + rx * scale, y: H / 2 - ry * scale, depth: depth };
+    };
+
+    const img = new Image();
+    img.onload = () => {
+      const off = document.createElement('canvas');
+      off.width = img.width; off.height = img.height;
+      const octx = off.getContext('2d');
+      octx.imageSmoothingEnabled = false;
+      octx.drawImage(img, 0, 0);
+      let pixels = null;
+      try { pixels = octx.getImageData(0, 0, off.width, off.height).data; } catch (e) { pixels = null; }
+      /** color medio y alfa media de un trozo de textura (alfa 0 = transparente) */
+      const media = (u, v, w, h) => {
+        if (!pixels) return { r: 150, g: 150, b: 150, a: 1 };
+        let r = 0, g = 0, b = 0, n = 0, aSum = 0, total = 0;
+        const x0 = Math.max(0, Math.floor(u)), y0 = Math.max(0, Math.floor(v));
+        const x1 = Math.min(off.width - 1, Math.ceil(u + w)), y1 = Math.min(off.height - 1, Math.ceil(v + h));
+        for (let y = y0; y <= y1; y++) {
+          for (let x = x0; x <= x1; x++) {
+            const o = (y * off.width + x) * 4;
+            const a = pixels[o + 3];
+            aSum += a; total++;
+            if (a < 12) continue;
+            r += pixels[o]; g += pixels[o + 1]; b += pixels[o + 2]; n++;
+          }
+        }
+        if (!n) return { r: 0, g: 0, b: 0, a: 0 };
+        return { r: Math.round(r / n), g: Math.round(g / n), b: Math.round(b / n), a: total ? aSum / total / 255 : 1 };
+      };
+
+      /**
+       * Rectángulo de textura de cada cara (desplegado estándar de caja):
+       *   [este][norte][oeste][sur]  arriba de todo, y [arriba][abajo] encima.
+       *   x: 0..2(d+w)   y: 0..d+h
+       */
+      const carasUV = (uv, w, h, d) => {
+        const u = uv[0], v = uv[1];
+        return {
+          east: [u, v + d, d, h],
+          north: [u + d, v + d, w, h],
+          west: [u + d + w, v + d, d, h],
+          south: [u + 2 * d + w, v + d, w, h],
+          up: [u + d, v, w, d],
+          down: [u + d + w, v, w, d]
+        };
+      };
+
+      // cada cara: esquina de origen + vector U + vector V (en el modelo, y arriba)
+      const CARAS = [
+        { key: 'north', shade: 0.92, o: (b) => [b[1][0], b[1][1], b[0][2]], u: (b) => [b[0][0] - b[1][0], 0, 0], v: (b) => [0, b[0][1] - b[1][1], 0] },
+        { key: 'south', shade: 0.78, o: (b) => [b[0][0], b[1][1], b[1][2]], u: (b) => [b[1][0] - b[0][0], 0, 0], v: (b) => [0, b[0][1] - b[1][1], 0] },
+        { key: 'east', shade: 0.86, o: (b) => [b[1][0], b[1][1], b[1][2]], u: (b) => [0, 0, b[0][2] - b[1][2]], v: (b) => [0, b[0][1] - b[1][1], 0] },
+        { key: 'west', shade: 0.86, o: (b) => [b[0][0], b[1][1], b[0][2]], u: (b) => [0, 0, b[1][2] - b[0][2]], v: (b) => [0, b[0][1] - b[1][1], 0] },
+        { key: 'up', shade: 1.0, o: (b) => [b[0][0], b[1][1], b[0][2]], u: (b) => [b[1][0] - b[0][0], 0, 0], v: (b) => [0, 0, b[1][2] - b[0][2]] },
+        { key: 'down', shade: 0.66, o: (b) => [b[0][0], b[0][1], b[1][2]], u: (b) => [b[1][0] - b[0][0], 0, 0], v: (b) => [0, 0, b[0][2] - b[1][2]] }
+      ];
+
+      /** pinta un trozo de textura deformado sobre un cuadrilátero en pantalla */
+      const pintarCara = (pts, sx, sy, sw, sh, shade) => {
+        if (sw <= 0 || sh <= 0 || !pixels) return false;
+        const p0 = pts[0], p1 = pts[1], p3 = pts[3];
+        ctx.save();
+        ctx.beginPath();
+        pts.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)));
+        ctx.closePath();
+        ctx.clip();
+        ctx.transform((p1.x - p0.x) / sw, (p1.y - p0.y) / sw, (p3.x - p0.x) / sh, (p3.y - p0.y) / sh, p0.x, p0.y);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(img, sx, sy, Math.max(0.01, sw), Math.max(0.01, sh), 0, 0, sw, sh);
+        if (shade < 1) {
+          ctx.fillStyle = 'rgba(0,0,0,' + (1 - shade).toFixed(2) + ')';
+          ctx.fillRect(0, 0, sw, sh);
+        }
+        ctx.restore();
+        return true;
+      };
+
+      /** las cuatro esquinas de una cara de la caja b (en espacio del modelo) */
+      const esquinas = (c, b) => {
+        const o = c.o(b), du = c.u(b), dv = c.v(b);
+        return [o,
+          [o[0] + du[0], o[1] + du[1], o[2] + du[2]],
+          [o[0] + du[0] + dv[0], o[1] + du[1] + dv[1], o[2] + du[2] + dv[2]],
+          [o[0] + dv[0], o[1] + dv[1], o[2] + dv[2]]];
+      };
+
+      const faces = [];
+
+      // --- skin: base y capas por separado ---
+      const dibujadas = { base: 0, capas: 0, armadura: 0 };
+      boxes.forEach((box) => {
+        const esCapa = PCK.OVERLAY_BOX_TYPES.indexOf(box.type) >= 0;
+        if (esCapa && opts.capas === false) return;
+        if (!esCapa && opts.base === false) return;
+        dibujadas[esCapa ? 'capas' : 'base']++;
+        const ms = PCK.boxToModelSpace(box);
+        const inf = (box.inflate || 0) / 2;
+        const b = [[ms.min[0] - inf, ms.min[1] - inf, ms.min[2] - inf], [ms.max[0] + inf, ms.max[1] + inf, ms.max[2] + inf]];
+        const w = ms.max[0] - ms.min[0], h = ms.max[1] - ms.min[1], d = ms.max[2] - ms.min[2];
+        const uvs = carasUV(box.uv, w, h, d);
+        CARAS.forEach((c) => {
+          const pts = esquinas(c, b).map((q) => project(q[0], q[1], q[2]));
+          const rect = uvs[c.key];
+          const col = media(rect[0], rect[1], rect[2], rect[3]);
+          if (col.a <= 0.02) return;                       // cara transparente
+          faces.push({
+            pts: pts,
+            depth: pts.reduce((a, q) => a + q.depth, 0) / 4,
+            tex: rect,
+            shade: c.shade,
+            stroke: 'rgba(6,10,18,' + (esCapa ? 0.22 : 0.5) + ')'
+          });
+        });
+      });
+
+      // --- armadura (encima, semitransparente y arrastrable) ---
+      const piezas = [];
+      const offsets = skin.offsets || {};
+      const listaPiezas = Array.isArray(opts.piezas) ? opts.piezas : Object.keys(ARMOR_STD);
+      listaPiezas.forEach((tipo) => {
+        const off = -(Number(offsets[tipo]) || 0);   // OFFSET negativo = más arriba
+        const alto = ARMOR_STD[tipo] ? (armorPieceBox(tipo, boxes)[1][1] - armorPieceBox(tipo, boxes)[0][1]) : 0;
+        const base = [];
+        base[0] = b0(tipo, boxes)[0].map((v, i) => (i === 1 ? v + off : v));
+        base[1] = b0(tipo, boxes)[1].map((v, i) => (i === 1 ? v + off : v));
+        void alto;
+        const sel = opts.selected === tipo;
+        const color = sel ? [255, 186, 84] : [148, 178, 224];
+        const alpha = sel ? 0.30 : 0.13;
+        const proyectadas = [];
+        CARAS.forEach((c) => {
+          const pts = esquinas(c, base).map((q) => project(q[0], q[1], q[2]));
+          proyectadas.push(pts);
+          faces.push({
+            pts: pts,
+            depth: pts.reduce((a, q) => a + q.depth, 0) / 4 - 0.001,
+            solid: true,
+            fill: 'rgba(' + Math.round(color[0] * c.shade) + ',' + Math.round(color[1] * c.shade) + ',' + Math.round(color[2] * c.shade) + ',' + alpha + ')',
+            stroke: sel ? 'rgba(255,196,110,0.95)' : 'rgba(148,178,224,0.62)'
+          });
+        });
+        dibujadas.armadura++;
+        const xs = proyectadas.flat().map((q) => q.x), ys = proyectadas.flat().map((q) => q.y);
+        piezas.push({
+          tipo: tipo,
+          x0: Math.min.apply(null, xs), x1: Math.max.apply(null, xs),
+          y0: Math.min.apply(null, ys), y1: Math.max.apply(null, ys),
+          centro: { x: (Math.min.apply(null, xs) + Math.max.apply(null, xs)) / 2,
+                    y: (Math.min.apply(null, ys) + Math.max.apply(null, ys)) / 2 }
+        });
+      });
+
+      faces.sort((a, b) => a.depth - b.depth);
+      faces.forEach((f) => {
+        if (f.solid) {
+          ctx.beginPath();
+          f.pts.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)));
+          ctx.closePath();
+          ctx.fillStyle = f.fill;
+          ctx.fill();
+          if (f.stroke) { ctx.strokeStyle = f.stroke; ctx.lineWidth = 1; ctx.stroke(); }
+          return;
+        }
+        if (!pintarCara(f.pts, f.tex[0], f.tex[1], f.tex[2], f.tex[3], f.shade)) return;
+        ctx.beginPath();
+        f.pts.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)));
+        ctx.closePath();
+        ctx.strokeStyle = f.stroke;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+
+      // etiqueta de la pieza elegida
+      if (opts.selected) {
+        const val = (skin.offsets || {})[opts.selected] || 0;
+        ctx.font = '600 13px system-ui, sans-serif';
+        ctx.fillStyle = 'rgba(255,196,110,0.95)';
+        ctx.textAlign = 'left';
+        ctx.fillText(opts.selected + ' · Y ' + val, 12, 22);
+        ctx.font = '11px system-ui, sans-serif';
+        ctx.fillStyle = 'rgba(200,214,235,0.75)';
+        ctx.fillText('arrastra arriba/abajo', 12, 38);
+      }
+
+      canvas._lce3d = { piezas: piezas, dibujadas: dibujadas, escala: scale, alto: H, ancho: W };
+    };
+    img.src = skin.thumbUrl;
+
+    function b0(tipo, bx) { return armorPieceBox(tipo, bx); }
+  }
+
+  /** arrastrar las piezas de armadura en la vista 3D */
+  function initArmorDrag(canvas, skin, onChange) {
+    // el contexto se actualiza en cada apertura; los listeners se ponen una sola vez
+    canvas._lceCtx = { skin: skin, onChange: onChange, sel: () => armorSeleccionada };
+    if (canvas._lceBound) return;
+    canvas._lceBound = true;
+    let activa = null;
+    let y0 = 0;
+    let off0 = 0;
+    const punto = (ev) => {
+      const r = canvas.getBoundingClientRect();
+      return {
+        x: (ev.clientX - r.left) * (canvas.width / r.width),
+        y: (ev.clientY - r.top) * (canvas.height / r.height)
+      };
+    };
+    const piezaEn = (p) => {
+      const st = canvas._lce3d;
+      if (!st) return null;
+      // la más pequeña que contenga el punto = la que está delante
+      const dentro = st.piezas.filter((z) => p.x >= z.x0 && p.x <= z.x1 && p.y >= z.y0 && p.y <= z.y1);
+      dentro.sort((a, b) => (a.x1 - a.x0) * (a.y1 - a.y0) - (b.x1 - b.x0) * (b.y1 - b.y0));
+      return dentro[0] || null;
+    };
+    canvas.addEventListener('pointerdown', (ev) => {
+      if (!canvas._lceCtx) return;
+      const p = punto(ev);
+      const elegida = canvas._lceCtx.sel && canvas._lceCtx.sel();
+      const pieza = elegida ? { tipo: elegida } : piezaEn(p);
+      if (!pieza) return;
+      activa = pieza.tipo;
+      y0 = ev.clientY;
+      off0 = Number((canvas._lceCtx.skin.offsets || {})[activa]) || 0;
+      canvas.setPointerCapture(ev.pointerId);
+      canvas.style.cursor = 'ns-resize';
+      canvas._lceCtx.onChange(activa, off0, true);
+      ev.preventDefault();
+    });
+    canvas.addEventListener('pointermove', (ev) => {
+      const p = punto(ev);
+      if (!activa) {
+        canvas.style.cursor = piezaEn(p) ? 'ns-resize' : 'default';
+        return;
+      }
+      const r = canvas.getBoundingClientRect();
+      const escalaPx = (canvas._lce3d ? canvas._lce3d.escala : 9) * (r.height / canvas.height);
+      const delta = Math.round((ev.clientY - y0) / escalaPx);   // bajar el ratón = bajar la pieza
+      const valor = off0 + delta;
+      if (canvas._lceCtx) canvas._lceCtx.onChange(activa, valor, false);
+      ev.preventDefault();
+    });
+    const fin = (ev) => {
+      if (!activa) return;
+      activa = null;
+      canvas.style.cursor = 'default';
+      try { canvas.releasePointerCapture(ev.pointerId); } catch (e) { /* noop */ }
+    };
+    canvas.addEventListener('pointerup', fin);
+    canvas.addEventListener('pointercancel', fin);
+  }
+
+  /* ============================================================
+     PESTAÑA 2 — TEXTURE PACKS  (.zip → .pck de PS3)
+     ============================================================ */
+  const tex = {
+    base: null,        // {fileName, pckType, xmlVersion, littleEndian, assets, name, packId}
+    patched: new Set(),
+    report: [],
+    target: 'ps3',
+    running: false
+  };
+
+  const PNG_TYPES = [0, 1, 2]; // SkinFile, CapeFile, TextureFile
+
+  function pngDims(u8) {
+    if (!u8 || u8.length < 24) return null;
+    if (!(u8[0] === 0x89 && u8[1] === 0x50 && u8[2] === 0x4e && u8[3] === 0x47)) return null;
+    const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
+    return { w: dv.getUint32(16), h: dv.getUint32(20) };
+  }
+
+  /* Traduce rutas de Java/Bedrock a las rutas que usa Legacy Console Edition */
+  function normalizePath(path) {
+    let p = String(path).toLowerCase().replace(/\\/g, '/').replace(/^\.?\//, '');
+    const i = p.indexOf('assets/minecraft/');
+    if (i >= 0) p = p.slice(i + 'assets/minecraft/'.length);
+    p = p.replace(/^assets\/[^/]+\//, '');
+    if (/^textures\/(models|gui|font|misc\/pumpkinblur|environment|colormap|effect)\//.test(p)) return '';
+    p = p.replace(/^textures\/block\//, 'textures/blocks/');
+    p = p.replace(/^textures\/item\//, 'textures/items/');
+    p = p.replace(/^textures\/entity\//, 'mob/');
+    p = p.replace(/^textures\/entities\//, 'mob/');
+    p = p.replace(/^textures\/mob_effect\//, 'mob/');
+    return p;
+  }
+
+  function texPngIndexes() {
+    const out = [];
+    tex.base.assets.forEach((a, i) => { if (pngDims(a.data)) out.push(i); });
+    return out;
+  }
+
+  function findMatches(srcPath) {
+    const key = normalizePath(srcPath);
+    const baseName = String(srcPath).split('/').pop().toLowerCase();
+    const idx = texPngIndexes();
+    // 1) coincidencia exacta de ruta
+    if (key) {
+      const exact = idx.filter((i) => tex.base.assets[i].filename.toLowerCase() === key);
+      if (exact.length) return { indexes: exact, how: 'ruta' };
+    }
+    // 2) misma ruta pero sin prefijo (p. ej. "textures/blocks/stone.png" dentro del zip)
+    if (key) {
+      const suffix = idx.filter((i) => {
+        const n = tex.base.assets[i].filename.toLowerCase();
+        return n.endsWith('/' + key) || key.endsWith('/' + n);
+      });
+      if (suffix.length === 1) return { indexes: suffix, how: 'ruta parcial' };
+    }
+    // 3) mismo nombre de archivo
+    const byName = idx.filter((i) => tex.base.assets[i].filename.split('/').pop().toLowerCase() === baseName);
+    if (byName.length === 1) return { indexes: byName, how: 'nombre de archivo' };
+    return { indexes: [], how: null };
+  }
+
+  /* Reescala respetando las tiras de animación verticales */
+  async function resample(srcBytes, dw, dh) {
+    const img = await loadImageBitmap(new Blob([srcBytes], { type: 'image/png' }));
+    const sw = img.width, sh = img.height;
+    if (sw === dw && sh === dh) return { bytes: srcBytes, note: '' };
+
+    const canvas = document.createElement('canvas');
+    canvas.width = dw; canvas.height = dh;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, dw, dh);
+
+    const dstFrames = dh % dw === 0 ? dh / dw : 1;
+    const srcFrames = sh % sw === 0 ? sh / sw : 1;
+    let note = sw + '×' + sh + ' → ' + dw + '×' + dh;
+    if (dstFrames > 1 && dstFrames === srcFrames) {
+      for (let f = 0; f < dstFrames; f++) {
+        ctx.drawImage(img, 0, f * sw, sw, sw, 0, f * dw, dw, dw);
+      }
+      note += ' (' + dstFrames + ' fotogramas, reescalado por fotograma)';
+    } else {
+      ctx.drawImage(img, 0, 0, sw, sh, 0, 0, dw, dh);
+      if (dstFrames > 1) note += ' ⚠ el destino es una animación de ' + dstFrames + ' fotogramas';
+    }
+    return { bytes: await canvasToPngBytes(canvas), note: note };
+  }
+
+  async function texApplyOne(srcPath, data) {
+    const dims = pngDims(data);
+    if (!dims) {
+      tex.report.push({ kind: 'err', src: srcPath, dst: '', note: 'no es un PNG válido' });
+      return;
+    }
+    const m = findMatches(srcPath);
+    if (!m.indexes.length) {
+      tex.report.push({
+        kind: 'none', src: srcPath, dst: '',
+        note: 'ese archivo no existe en el pack base (no se añaden archivos nuevos para no romper el pack)'
+      });
+      return;
+    }
+    for (const i of m.indexes) {
+      const asset = tex.base.assets[i];
+      const target = pngDims(asset.data);
+      try {
+        const res = await resample(data, target.w, target.h);
+        asset.data = res.bytes;
+        tex.patched.add(asset.filename);
+        tex.report.push({
+          kind: res.note ? 'warn' : 'ok',
+          src: srcPath,
+          dst: asset.filename,
+          note: (m.how ? 'emparejado por ' + m.how : '') + (res.note ? ' · ' + res.note : '')
+        });
+      } catch (err) {
+        tex.report.push({ kind: 'err', src: srcPath, dst: asset.filename, note: err.message });
+      }
+    }
+  }
+
+  async function texFromFiles(fileList) {
+    if (!tex.base) { toast('Carga primero un pack base <code>.pck</code>', 'warn'); return; }
+    const files = Array.from(fileList || []);
+    if (!files.length) return;
+    tex.running = true;
+    setBusy(true);
+    for (const file of files) {
+      const lower = file.name.toLowerCase();
+      try {
+        let entries = [];
+        if (/\.(zip|jar|mcpack|mcaddon)$/.test(lower)) {
+          const list = await unzip(await file.arrayBuffer());
+          entries = list.filter((e) => /\.png$/i.test(e.name)).map((e) => ({ name: e.name, data: e.data }));
+          if (!entries.length) toast('<code>' + file.name + '</code> no contiene PNG', 'warn');
+        } else if (/\.png$/i.test(lower)) {
+          entries = [{ name: file.name, data: new Uint8Array(await file.arrayBuffer()) }];
+        } else {
+          toast('Formato no soportado en esta pestaña: <code>' + file.name + '</code>', 'warn');
+          continue;
+        }
+        for (const e of entries) await texApplyOne(e.name, e.data);
+      } catch (err) {
+        console.error(err);
+        toast('<b>' + file.name + '</b>: ' + err.message, 'error');
+      }
+    }
+    tex.running = false;
+    setBusy(false);
+    renderTex();
+    const ok = tex.report.filter((r) => r.kind !== 'none' && r.kind !== 'err').length;
+    if (ok) toast('Texturas aplicadas: <b>' + tex.patched.size + '</b>', 'ok');
+  }
+
+  async function texLoadBase(file) {
+    try {
+      const buf = await file.arrayBuffer();
+      const pck = PCK.readPck(buf);
+      const assets = pck.assets.map((a) => ({
+        filename: a.filename,
+        type: a.type,
+        data: a.data,
+        params: a.params.map((p) => p.slice())
+      }));
+      let name = '';
+      const loc = assets.find((a) => a.type === PCK.ASSET_TYPE.LocalisationFile);
+      if (loc) {
+        try {
+          const parsed = PCK.readLoc(loc.data);
+          const k = parsed.keys['IDS_DISPLAY_NAME'];
+          if (k) name = k['en-EN'] || Object.values(k)[0] || '';
+        } catch (e) { /* loc no parseable, da igual */ }
+      }
+      const info = assets.find((a) => a.type === PCK.ASSET_TYPE.InfoFile);
+      let packId = info ? info.params.find((p) => p[0] === 'PACKID') : null;
+      tex.base = {
+        fileName: file.name,
+        pckType: pck.pckType,
+        xmlVersion: pck.xmlVersion,
+        littleEndian: pck.littleEndian,
+        assets: assets,
+        name: name,
+        packId: packId ? Number(packId[1]) : null
+      };
+      tex.patched = new Set();
+      tex.report = [];
+      // el destino por defecto es siempre PS3 (big endian): si el pack base viene
+      // de PS4/Vita/Switch se convierte al vuelo.
+      tex.target = 'ps3';
+      $('#texPackId').value = tex.base.packId != null ? String(tex.base.packId) : '';
+      $$('input[name="texTarget"]').forEach((r) => { r.checked = r.value === tex.target; });
+      toast('Pack base cargado: <b>' + (name || file.name) + '</b> (' + pck.assets.length + ' archivos' +
+        (pck.littleEndian ? ', se convertirá a big endian para PS3' : '') + ')', 'ok');
+      renderTex();
+    } catch (err) {
+      console.error(err);
+      toast('<b>' + file.name + '</b>: ' + err.message, 'error');
+    }
+  }
+
+  function texBuild() {
+    const base = tex.base;
+    const assets = base.assets.map((a) => ({
+      filename: a.filename,
+      type: a.type,
+      data: a.data,
+      params: a.params.map((p) => p.slice())
+    }));
+
+    // PACKID editable
+    const rawId = $('#texPackId').value.trim();
+    if (rawId !== '') {
+      const pid = clampInt(rawId, 0, 0x00ffffff, null);
+      if (pid != null) {
+        const info = assets.find((a) => a.type === PCK.ASSET_TYPE.InfoFile);
+        if (info) {
+          const p = info.params.find((x) => x[0] === 'PACKID');
+          if (p) p[1] = String(pid); else info.params.push(['PACKID', String(pid)]);
+        }
+      }
+    }
+
+    const littleEndian = tex.target === 'modern';
+
+    // Los sub-PCK incrustados (tipo 5/8/11) deben usar el mismo endianness
+    if (littleEndian !== base.littleEndian) {
+      assets.forEach((a) => {
+        if (a.type !== 5 && a.type !== 8 && a.type !== 11) return;
+        try {
+          const sub = PCK.readPck(a.data);
+          a.data = PCK.writePck({
+            pckType: sub.pckType,
+            xmlVersion: sub.xmlVersion,
+            littleEndian: littleEndian,
+            assets: sub.assets
+          });
+        } catch (e) { /* no era un PCK: se deja tal cual */ }
+      });
+    }
+
+    return PCK.writePck({
+      pckType: base.pckType,
+      xmlVersion: base.xmlVersion,
+      littleEndian: littleEndian,
+      assets: assets
+    });
+  }
+
+  function renderTex() {
+    const has = !!tex.base;
+    $('#baseState').textContent = has ? 'cargado' : 'sin cargar';
+    $('#baseState').className = 'pill' + (has ? ' ok-pill' : '');
+
+    const info = $('#baseInfo');
+    const list = $('#baseAssets');
+    if (!has) {
+      info.innerHTML = '';
+      list.innerHTML = '';
+      $('#texSumAssets').textContent = '0';
+      $('#texSumPatched').textContent = '0';
+      $('#texSumSize').textContent = '—';
+      $('#texHint').textContent = 'Carga primero un pack base .pck.';
+      ['#texDownloadBtn', '#texZipBtn', '#texVerifyBtn'].forEach((sel) => { $(sel).disabled = true; });
+      renderTexReport();
+      return;
+    }
+
+    const pngCount = texPngIndexes().length;
+    info.innerHTML = `
+      <div class="base-info">
+        <div class="row"><span>Archivo</span><b>${escapeHtml(tex.base.fileName)}</b></div>
+        <div class="row"><span>Nombre del pack</span><b>${escapeHtml(tex.base.name || '—')}</b></div>
+        <div class="row"><span>Formato</span><b>PCK ${tex.base.pckType} · ${tex.base.littleEndian ? 'little endian' : 'big endian'}${tex.base.xmlVersion ? ' · BOX ' + tex.base.xmlVersion : ''}</b></div>
+        <div class="row"><span>Texturas PNG</span><b>${pngCount} de ${tex.base.assets.length} archivos</b></div>
+        <div class="row"><span>PACKID</span><b>${tex.base.packId != null ? tex.base.packId : '—'}</b></div>
+      </div>`;
+
+    const pngs = texPngIndexes().slice(0, 60).map((i) => {
+      const a = tex.base.assets[i];
+      const d = pngDims(a.data);
+      const patched = tex.patched.has(a.filename);
+      return `<div class="a-row${patched ? ' patched' : ''}"><code>${escapeHtml(a.filename)}</code>
+        <span class="t">${d.w}×${d.h}${patched ? ' · sustituida' : ''}</span></div>`;
+    }).join('');
+    const extra = pngCount > 60 ? `<div class="a-row"><span class="t">… y ${pngCount - 60} más</span></div>` : '';
+    list.innerHTML = pngs + extra;
+
+    let totalBytes = 0;
+    tex.base.assets.forEach((a) => { totalBytes += a.data.length; });
+    $('#texSumAssets').textContent = String(tex.base.assets.length);
+    $('#texSumPatched').textContent = String(tex.patched.size);
+    $('#texSumSize').textContent = '≈ ' + humanSize(totalBytes + 512);
+    $('#texSumFormat').textContent = 'PCK ' + tex.base.pckType + ' · ' + (tex.target === 'ps3' ? 'BE' : 'LE');
+    const conv = tex.target === 'ps3' && tex.base.littleEndian;
+    $('#texHint').textContent = (tex.patched.size
+      ? 'Se sustituirán ' + tex.patched.size + ' texturas al exportar.'
+      : 'Aún no has sustituido ninguna textura: el .pck saldrá igual que el pack base (útil para cambiarle el endianness o el PACKID).') +
+      (conv ? ' El pack base es little endian: se convertirá a big endian (PS3).' : '');
+    ['#texDownloadBtn', '#texZipBtn', '#texVerifyBtn'].forEach((sel) => { $(sel).disabled = false; });
+    renderTexReport();
+  }
+
+  function renderTexReport() {
+    const box = $('#texReport');
+    if (!tex.report.length) { box.innerHTML = ''; return; }
+    const icon = { ok: '✓', warn: '⚠', err: '✕', none: '·' };
+    box.innerHTML = tex.report.slice(-120).map((r) => `
+      <div class="r-row ${r.kind}">
+        <div class="r-ico">${icon[r.kind] || '·'}</div>
+        <div class="r-main">
+          ${r.dst ? '<div class="r-dst">→ <code>' + escapeHtml(r.dst) + '</code></div>' : ''}
+          <div class="r-src">${escapeHtml(r.src)}</div>
+          ${r.note ? '<div class="r-note">' + escapeHtml(r.note) + '</div>' : ''}
+        </div>
+      </div>`).join('');
+  }
+
+  /* ---------- ZIP de salida (sin compresión: los PNG ya van comprimidos) ---------- */
+  const CRC_TABLE = (() => {
+    const t = new Int32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      t[n] = c;
+    }
+    return t;
+  })();
+
+  function crc32(bytes) {
+    let c = -1;
+    for (let i = 0; i < bytes.length; i++) c = CRC_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+    return (c ^ -1) >>> 0;
+  }
+
+  function makeZip(files) {
+    const enc = new TextEncoder();
+    const locals = [];
+    const centrals = [];
+    let offset = 0;
+    files.forEach((f) => {
+      const name = enc.encode(f.name);
+      const data = f.data;
+      const crc = crc32(data);
+      const lh = new Uint8Array(30 + name.length);
+      const dv = new DataView(lh.buffer);
+      dv.setUint32(0, 0x04034b50, true);
+      dv.setUint16(4, 20, true);
+      dv.setUint16(6, 0, true);
+      dv.setUint16(8, 0, true);          // método 0 = store
+      dv.setUint16(10, 0, true);         // hora
+      dv.setUint16(12, 0x21, true);      // fecha (1980-01-01)
+      dv.setUint32(14, crc, true);
+      dv.setUint32(18, data.length, true);
+      dv.setUint32(22, data.length, true);
+      dv.setUint16(26, name.length, true);
+      lh.set(name, 30);
+      locals.push(lh, data);
+
+      const ch = new Uint8Array(46 + name.length);
+      const cv = new DataView(ch.buffer);
+      cv.setUint32(0, 0x02014b50, true);
+      cv.setUint16(4, 20, true);
+      cv.setUint16(6, 20, true);
+      cv.setUint16(10, 0, true);
+      cv.setUint16(12, 0, true);
+      cv.setUint16(14, 0x21, true);
+      cv.setUint32(16, crc, true);
+      cv.setUint32(20, data.length, true);
+      cv.setUint32(24, data.length, true);
+      cv.setUint16(28, name.length, true);
+      cv.setUint32(42, offset, true);
+      ch.set(name, 46);
+      centrals.push(ch);
+      offset += lh.length + data.length;
+    });
+    const centralSize = centrals.reduce((n, c) => n + c.length, 0);
+    const eocd = new Uint8Array(22);
+    const ev = new DataView(eocd.buffer);
+    ev.setUint32(0, 0x06054b50, true);
+    ev.setUint16(8, files.length, true);
+    ev.setUint16(10, files.length, true);
+    ev.setUint32(12, centralSize, true);
+    ev.setUint32(16, offset, true);
+
+    const all = locals.concat(centrals, [eocd]);
+    const total = all.reduce((n, c) => n + c.length, 0);
+    const out = new Uint8Array(total);
+    let p = 0;
+    all.forEach((c) => { out.set(c, p); p += c.length; });
+    return out;
+  }
+
+  function texVerifyAndLog(bytes, label) {
+    const p = PCK.readPck(bytes);
+    if (p.assets.length !== tex.base.assets.length) {
+      throw new Error('el número de archivos no cuadra (' + p.assets.length + ' vs ' + tex.base.assets.length + ')');
+    }
+    const rows = p.assets.map((a) => {
+      const d = pngDims(a.data);
+      return '<div class="log-row"><div class="log-name"><code>' + escapeHtml(a.filename) +
+        '</code><span class="t">tipo ' + a.type + (d ? ' · ' + d.w + '×' + d.h : '') + ' · ' + humanSize(a.data.length) +
+        '</span></div>' + (a.params.length ? '<div class="log-params">' +
+          escapeHtml(a.params.map((x) => x[0] + '=' + x[1]).join(' · ')) + '</div>' : '') + '</div>';
+    }).join('');
+    $('#texLog').innerHTML = `
+      <div class="log-head">
+        <strong>✓ Estructura verificada: ${p.assets.length} archivos, ${p.littleEndian ? 'little' : 'big'} endian, tipo ${p.pckType}</strong>
+        <span class="muted">${escapeHtml(label)} · ${humanSize(bytes.length)}</span>
+      </div>
+      <div class="log-rows">${rows}</div>`;
+    $('#texLog').classList.add('show');
+  }
+
+  function initTabs() {
+    const tabs = [
+      { btn: '#tabBtnSkins', panel: '#panel-skins' },
+      { btn: '#tabBtnTex', panel: '#panel-tex' }
+    ];
+    tabs.forEach((t) => {
+      $(t.btn).addEventListener('click', () => {
+        tabs.forEach((o) => {
+          const active = o === t;
+          $(o.btn).classList.toggle('active', active);
+          $(o.btn).setAttribute('aria-selected', active ? 'true' : 'false');
+          const panel = $(o.panel);
+          panel.classList.toggle('active', active);
+          panel.hidden = !active;
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      });
+    });
+  }
+
+  function texActive() {
+    const p = $('#panel-tex');
+    return p && !p.hidden;
+  }
+
+  function initTex() {
+    const baseInput = $('#baseInput');
+    $('#baseDrop').addEventListener('click', () => baseInput.click());
+    baseInput.addEventListener('change', () => {
+      if (baseInput.files[0]) texLoadBase(baseInput.files[0]);
+      baseInput.value = '';
+    });
+
+    const texInput = $('#texInput');
+    $('#texPickBtn').addEventListener('click', () => texInput.click());
+    texInput.addEventListener('change', () => { texFromFiles(texInput.files); texInput.value = ''; });
+
+    ['#baseDrop', '#texDrop'].forEach((sel) => {
+      const dz = $(sel);
+      ['dragenter', 'dragover'].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.add('over'); }));
+      ['dragleave', 'drop'].forEach((ev) => dz.addEventListener(ev, (e) => { e.preventDefault(); dz.classList.remove('over'); }));
+      dz.addEventListener('drop', (e) => {
+        if (!e.dataTransfer) return;
+        const files = Array.from(e.dataTransfer.files);
+        if (sel === '#baseDrop') { if (files[0]) texLoadBase(files[0]); }
+        else texFromFiles(files);
+      });
+    });
+
+    $('#texClearBtn').addEventListener('click', () => {
+      tex.patched = new Set();
+      tex.report = [];
+      renderTex();
+    });
+
+    $$('input[name="texTarget"]').forEach((r) => r.addEventListener('change', () => {
+      tex.target = r.value;
+      renderTex();
+    }));
+
+    $('#texDownloadBtn').addEventListener('click', () => {
+      if (!tex.base) return;
+      try {
+        const bytes = texBuild();
+        texVerifyAndLog(bytes, tex.base.fileName);
+        const fname = safeFileName((tex.base.name || 'texturepack')) + '.pck';
+        download(bytes, fname);
+        toast('Descargado <b>' + fname + '</b> (' + humanSize(bytes.length) + ')', 'ok');
+      } catch (err) {
+        console.error(err);
+        toast('Error al construir el pack: ' + err.message, 'error');
+      }
+    });
+
+    $('#texVerifyBtn').addEventListener('click', () => {
+      if (!tex.base) return;
+      try {
+        const bytes = texBuild();
+        texVerifyAndLog(bytes, tex.base.fileName);
+        toast('✓ Estructura verificada · ' + humanSize(bytes.length), 'ok');
+      } catch (err) {
+        toast('✗ ' + err.message, 'error');
+      }
+    });
+
+    $('#texZipBtn').addEventListener('click', () => {
+      if (!tex.base) return;
+      const idx = texPngIndexes();
+      const files = idx.map((i) => ({ name: tex.base.assets[i].filename, data: tex.base.assets[i].data }));
+      files.push({
+        name: 'LEEME.txt',
+        data: new TextEncoder().encode(
+          'Texturas extraidas del pack base ' + tex.base.fileName + '\n\n' +
+          '1. Edita estos PNG manteniendo el tamano exacto (o usa el mismo layout de atlas).\n' +
+          '2. Vuelve a subir este zip en la pestana "Texture packs" de SkinForge.\n' +
+          '3. Descarga el .pck e instalalo en la PS3 (USRDIR/DLC/<carpeta>/).\n'
+        )
+      });
+      const zip = makeZip(files);
+      download(zip, safeFileName((tex.base.name || 'texturas')) + '-png.zip');
+      toast('Exportados <b>' + idx.length + '</b> PNG en un .zip', 'ok');
+    });
+
+    renderTex();
+  }
+
+  document.addEventListener('DOMContentLoaded', init);
+})();
+
+</script>
+</body>
+</html>
