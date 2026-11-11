@@ -11,6 +11,15 @@ Herramienta web **de un solo archivo** (`index.html`) con dos pestañas y **mode
 
 Todo ocurre en el navegador: no se sube ningún archivo a ningún servidor.
 
+## En línea
+
+- **GitHub Pages:** <https://isacrack.github.io/skinforge/>
+- **Repositorio:** <https://github.com/Isacrack/skinforge>
+- Si Pages aún no ha desplegado (o prefieres no esperar), el mismo `index.html` se sirve desde
+  <https://raw.githack.com/Isacrack/skinforge/main/index.html>
+
+![Vista 3D con la armadura y su OFFSET](capturas/modal-3d.png)
+
 ---
 
 ## Pestaña 1 — Skins
