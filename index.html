@@ -1994,43 +1994,64 @@ body.busy .dropzone { opacity: 0.7; }
   }
 
   /**
-   * Importa un .bbmodel. La textura puede venir incrustada (data URL) o como
-   * ruta a un PNG aparte (lo normal si la has cambiado en Blockbench).
+   * Importa un .bbmodel. Manda la PNG que sueltes junto al modelo (es la skin
+   * que quieres ver en 3D); si no hay PNG, se usa la textura incrustada en el
+   * .bbmodel o, si solo apunta a una ruta, el PNG que ya esté cargado.
    */
   async function importBbmodel(file, pngDelLote, consumidos) {
     const parsed = parseBbModel(await file.text());
-    const nombreTex = String(parsed.textureName || '').replace(/\.[a-z0-9]+$/i, '').toLowerCase();
-    const nombreSkin = parsed.name || file.name.replace(/\.bbmodel$/i, '');
+    const base = (n) => String(n || '').replace(/\.[a-z0-9]+$/i, '').trim().toLowerCase();
+    const nombreTex = base(parsed.textureName);
+    const baseModelo = base(file.name);
 
-    let imagen = null;
-    let yaCargada = null;
-    if (parsed.textureUrl) {
-      imagen = dataUrlToBlob(parsed.textureUrl);
-    } else if (pngDelLote && pngDelLote.length) {
-      const igual = pngDelLote.find((f) => f.name.replace(/\.[a-z0-9]+$/i, '').toLowerCase() === nombreTex);
-      const elegida = igual || (pngDelLote.length === 1 ? pngDelLote[0] : null) ||
-        pngDelLote.find((f) => !consumidos.has(f));
-      if (elegida) {
-        consumidos.add(elegida);
-        yaCargada = state.skins.find((x) => x.src === elegida.name) || null;
-        imagen = yaCargada ? null : elegida;
+    // ¿viene una PNG en el mismo lote? entonces ELLA es la textura del modelo
+    const libres = (pngDelLote || []).filter((f) => !consumidos.has(f));
+    const png = libres.find((f) => base(f.name) === baseModelo) ||          // mismo nombre que el modelo
+      libres.find((f) => base(f.name) === nombreTex) ||                    // mismo nombre que su textura
+      (libres.length === 1 ? libres[0] : null);                            // única PNG del lote
+
+    let skin = null;
+    if (png) {
+      consumidos.add(png);
+      skin = state.skins.find((x) => x.src === png.name) || null;
+      if (!skin) skin = await addSkinFromBlob(png, { name: parsed.name || base(png.name) || baseModelo, src: png.name });
+      if (parsed.textureUrl) {
+        toast('Modelo + PNG: se usa <code>' + escapeHtml(png.name) + '</code> como textura (no la incrustada en el .bbmodel)', 'ok');
+      }
+    } else if (parsed.textureUrl) {
+      // si ya hay una skin con el mismo nombre (el del modelo o el de su textura), el modelo va a ella
+      skin = state.skins.find((x) => !x.model3d &&
+        (base(x.name) === baseModelo || (nombreTex && base(x.name) === nombreTex))) || null;
+      if (!skin) {
+        skin = await addSkinFromBlob(dataUrlToBlob(parsed.textureUrl), { name: parsed.name || baseModelo, src: file.name });
+        if (state.skins.filter((x) => !x.model3d).length) {
+          toast('Modelo con su propia textura. Para ver <b>tu PNG</b> con esta geometría, suéltalos <b>juntos</b> ' +
+            '(o carga la PNG antes de soltar el <code>.bbmodel</code>).', 'info');
+        }
+      }
+    } else {
+      // solo apunta a una ruta: busca esa skin ya cargada
+      if (nombreTex) {
+        skin = state.skins.find((x) => (x.name || '').toLowerCase() === nombreTex) ||
+          state.skins.find((x) => base((x.src || '').split('›').pop()) === nombreTex) || null;
+      }
+      // o la única skin que aún no tiene modelo (soltar la PNG primero y el .bbmodel después)
+      if (!skin) {
+        const candidatas = state.skins.filter((x) => !x.model3d);
+        if (candidatas.length === 1) {
+          skin = candidatas[0];
+          toast('Modelo aplicado a <b>' + escapeHtml(skin.name) + '</b>', 'ok');
+        }
+      }
+      if (!skin) {
+        const c = document.createElement('canvas');
+        c.width = 64; c.height = 64;
+        const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+        skin = await addSkinFromBlob(blob, { name: parsed.name || baseModelo, src: file.name });
+        toast('El <code>.bbmodel</code> apunta a <code>' + escapeHtml(parsed.textureName || 'una textura externa') +
+          '</code>: suéltala junto al modelo, o carga la PNG antes', 'warn');
       }
     }
-    if (!imagen && !yaCargada && nombreTex) {
-      yaCargada = state.skins.find((x) => (x.name || '').toLowerCase() === nombreTex) ||
-        state.skins.find((x) => (x.src || '').split('›').pop().trim().replace(/\.[a-z0-9]+$/i, '').toLowerCase() === nombreTex);
-    }
-
-    let skin = yaCargada;
-    if (!imagen && !skin) {
-      const c = document.createElement('canvas');
-      c.width = 64; c.height = 64;
-      const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
-      skin = await addSkinFromBlob(blob, { name: nombreSkin, src: file.name });
-      toast('El <code>.bbmodel</code> apunta a <code>' + (parsed.textureName || 'una textura externa') +
-        '</code>: suéltala junto al modelo, o carga la PNG antes', 'warn');
-    }
-    if (!skin) skin = await addSkinFromBlob(imagen, { name: nombreSkin, src: file.name });
     await applyBbModelToSkin(skin, file);
   }
 

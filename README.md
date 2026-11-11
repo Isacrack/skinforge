@@ -88,8 +88,21 @@ Suelta un `.bbmodel` y la herramienta:
 3. Elige el **`XMLVERSION`** del pack: `2` por defecto; `3` si algún cubo lleva un inflado propio.
 4. Detecta el modelo **slim** si los brazos miden 3 px y ajusta el `ANIM`.
 5. Enseña el resultado en la vista 3D isométrica (botón **3D** de la tarjeta): el modelo se pinta con
-   la **textura del `.bbmodel` mapeada cara por cara**, visto de frente, y las capas translúcidas se
-   componen como en el juego.
+   la textura **mapeada cara por cara**, visto de frente, y las capas translúcidas se componen como en el juego.
+
+### Tu PNG manda: ver tu skin con la geometría del modelo
+
+Quieres saber **cómo queda tu skin con ese modelo**, así que la PNG que sueltas con el `.bbmodel` es la que
+se usa como textura:
+
+| Sueltas… | Qué pasa |
+|---|---|
+| **PNG + `.bbmodel` juntos** | **Una sola** skin: tu PNG como textura y la geometría del `.bbmodel`. Si el modelo traía su propia textura incrustada, se ignora (aviso en el toast). |
+| **Solo el `.bbmodel`** (con textura dentro) | Skin nueva con la textura del modelo. |
+| **Solo el `.bbmodel`** que apunta a un PNG por ruta | Se empareja con la PNG del lote, con la que ya esté cargada, o con la única skin sin modelo. |
+| **PNG primero, luego el `.bbmodel`** | Si la skin se llama como el modelo o como su textura, el modelo se aplica a esa skin sin duplicarla. |
+
+Los nombres se emparejan sin extensión y sin distinguir mayúsculas (`caballero.bbmodel` ↔ `caballero.png`).
 
 ### Qué se puede y qué no
 

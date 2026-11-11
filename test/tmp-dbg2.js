@@ -1,0 +1,23 @@
+const { chromium } = require('playwright');
+const fs = require('fs'); const path = require('path');
+const OUT = path.join(__dirname, 'out');
+(async () => {
+  const br = await chromium.launch();
+  const page = await br.newPage({ viewport: { width: 1200, height: 900 }, acceptDownloads: true });
+  page.on('pageerror', (e) => console.log('PAGEERROR', e.message));
+  await page.goto('file://' + path.join(__dirname, '..', 'index.html'));
+  await page.setInputFiles('#fileInput', path.join(OUT, 'steve.png'));
+  await page.waitForFunction(() => document.querySelectorAll('.skin-card').length === 1);
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.click('#exampleModelBtn')]);
+  const pEx = path.join(OUT, 'plantilla-descargada.bbmodel');
+  await dl.saveAs(pEx);
+  const json = JSON.parse(fs.readFileSync(pEx, 'utf8'));
+  console.log('plantilla: name=', json.name, '| textura:', json.textures.map((t) => t.name));
+  await page.setInputFiles('#fileInput', pEx);
+  await page.waitForTimeout(1500);
+  console.log('tarjetas:', await page.locator('.skin-card').count());
+  console.log('toasts:', await page.evaluate(() => [...document.querySelectorAll('.toast')].map((t) => t.textContent.trim())));
+  console.log('nombres:', await page.evaluate(() => [...document.querySelectorAll('.skin-card input[data-role=name]')].map((i) => i.value)));
+  console.log('modelos:', await page.evaluate(() => [...document.querySelectorAll('.skin-card .pill.model-on')].map((p) => p.textContent.trim())));
+  await br.close();
+})();

@@ -291,13 +291,12 @@ function pngDataUrl(file) {
     'right_sleeve', 'left_arm', 'left_sleeve', 'right_leg', 'right_pants', 'left_leg', 'left_pants']);
   const hatArmor = json.elements.find((e) => e.name === 'hat').lce_armor;
   assert.strictEqual(hatArmor, 1, 'la plantilla sugiere casco para el sombrero');
-  // y al volver a soltarla, la herramienta la interpreta bien
+  // y al volver a soltarla, la herramienta la interpreta bien: la plantilla se llama
+  // «steve (modelo)» y apunta a «steve.png», así que el modelo se aplica a la skin que ya está
   await page.setInputFiles('#fileInput', pEx);
-  await page.waitForFunction(() => document.querySelectorAll('.skin-card').length === 2, null, { timeout: 15000 });
-  const createOk = await page.evaluate(() => {
-    const cards = [...document.querySelectorAll('.skin-card')];
-    return cards[1].querySelector('.pill.model-on').textContent;
-  });
+  await page.waitForFunction(() => /12 cajas/.test(document.querySelector('.skin-card .pill.model-on')?.textContent || ''), null, { timeout: 15000 });
+  assert.strictEqual(await page.locator('.skin-card').count(), 1, 'la plantilla se aplica a la skin del mismo nombre, sin duplicarla');
+  const createOk = await page.textContent('.skin-card .pill.model-on');
   assert.ok(/12 cajas/.test(createOk), 'la plantilla reimportada crea 12 cajas: ' + createOk);
   console.log('  ✓ plantilla .bbmodel descargable desde la página y reimportable');
 
@@ -602,6 +601,54 @@ function pngDataUrl(file) {
   }) });
   await page.click('#dollClose');
   console.log('  ✓ la vista 3D enseña la cara del modelo con la textura sin espejar');
+
+  /* 5c. PNG propia + .bbmodel en el mismo lote: manda la PNG (la skin que quieres ver) */
+  const VERDE = [40, 190, 70];
+  const verde = encodePng(64, 64, (x, y) => {
+    if (x < 8 && y < 8) return [255, 255, 255, 255];      // un detalle para ver que no está espejada
+    return [VERDE[0], VERDE[1], VERDE[2], 255];
+  });
+  const verdePath = path.join(OUT, 'verde.png');
+  fs.writeFileSync(verdePath, verde);
+  await page.click('#clearBtn');
+  await page.waitForFunction(() => document.querySelectorAll('.skin-card').length === 0, null, { timeout: 5000 });
+  // el .bbmodel lleva incrustada la textura de steve: aun así debe ganar verda.png
+  await page.setInputFiles('#fileInput', [modelPath, verdePath]);
+  await page.waitForFunction(() => document.querySelectorAll('.skin-card').length === 1, null, { timeout: 15000 });
+  await page.waitForFunction(() => /Modelo:/.test(document.querySelector('.skin-card').textContent), null, { timeout: 15000 });
+  assert.strictEqual(await page.locator('.skin-card').count(), 1, 'PNG + .bbmodel → UNA sola skin, no dos');
+  assert.ok(/12 cajas/.test(await page.textContent('.skin-card .pill.model-on')), 'el modelo se aplica a la skin');
+  const thumbVerde = await page.evaluate(() => {
+    const img = document.querySelector('.skin-card .skin-thumb img');
+    const c = document.createElement('canvas');
+    c.width = img.naturalWidth; c.height = img.naturalHeight;
+    const x = c.getContext('2d');
+    x.drawImage(img, 0, 0);
+    const d = x.getImageData(0, 0, c.width, c.height).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i + 1] > d[i] + 40 && d[i + 1] > d[i + 2] + 40) n++;
+    return n;
+  });
+  assert.ok(thumbVerde > 3000, 'la miniatura es TU png (verde), no la textura del modelo: ' + thumbVerde);
+  await page.click('.skin-card .doll-btn');
+  await page.waitForFunction(() => document.querySelector('#dollCanvas')._lce3d, null, { timeout: 15000 });
+  await page.waitForTimeout(400);
+  const verdes3d = await page.evaluate(() => {
+    const c = document.querySelector('#dollCanvas');
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] > 200 && d[i + 1] > d[i] + 30 && d[i + 1] > d[i + 2] + 30) n++;
+    }
+    return n;
+  });
+  assert.ok(verdes3d > 3000, 'la vista 3D pinta la skin con TU png: ' + verdes3d);
+  await page.screenshot({ path: path.join(OUT, 'shot-png-mas-modelo.png'), clip: await page.evaluate(() => {
+    const c = document.querySelector('#dollCanvas'); const r = c.getBoundingClientRect();
+    return { x: r.left, y: r.top, width: r.width, height: r.height };
+  }) });
+  await page.click('#dollClose');
+  console.log('  ✓ PNG + .bbmodel juntos → una skin con tu textura y la geometría del modelo');
 
   /* 6. el verificador independiente también lo acepta */
   const { execSync } = require('child_process');
