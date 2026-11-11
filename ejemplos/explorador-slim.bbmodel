@@ -1,7 +1,7 @@
 {
 	"groups": [
 		{
-			"uuid": "d8a3f4b5-b6ad-4222-b569-16345ea781ea",
+			"uuid": "be05c9d4-e930-4a0a-814e-800fab5baa7b",
 			"name": "head",
 			"origin": [
 				0,
@@ -15,7 +15,7 @@
 			]
 		},
 		{
-			"uuid": "5bdffb41-9c42-4fb2-a163-352d41b62381",
+			"uuid": "cb621082-0639-4c7a-8bdf-54de59d334da",
 			"name": "body",
 			"origin": [
 				0,
@@ -29,7 +29,7 @@
 			]
 		},
 		{
-			"uuid": "c3d68a8d-2be0-469f-b91f-7b0957e7be99",
+			"uuid": "46245d17-46ed-4651-8123-a3a75e2c2923",
 			"name": "right_arm",
 			"origin": [
 				0,
@@ -43,7 +43,7 @@
 			]
 		},
 		{
-			"uuid": "29b9efd4-28f4-4c38-bdab-a36c95074b20",
+			"uuid": "1749ac85-84c6-4f09-adc6-ae51aaadda53",
 			"name": "left_arm",
 			"origin": [
 				0,
@@ -57,7 +57,7 @@
 			]
 		},
 		{
-			"uuid": "f161ef1e-1686-4123-8237-aefabd64ba0f",
+			"uuid": "4e4506c1-f527-4497-be45-8307f60bb020",
 			"name": "right_leg",
 			"origin": [
 				0,
@@ -71,7 +71,7 @@
 			]
 		},
 		{
-			"uuid": "ca414211-58c0-4342-9ad1-1ded94df8974",
+			"uuid": "ca7c0704-ceda-4104-8f8c-f5b5fdf6fb2a",
 			"name": "left_leg",
 			"origin": [
 				0,
@@ -97,7 +97,7 @@
 	},
 	"elements": [
 		{
-			"uuid": "9e45ddb8-38b7-4837-91f9-c82909e2a435",
+			"uuid": "bbbc8be2-acb1-46d8-b100-7011cf60bad4",
 			"type": "cube",
 			"name": "head",
 			"from": [
@@ -179,7 +179,7 @@
 			}
 		},
 		{
-			"uuid": "9d022e67-9c89-4a1d-bf07-1b5192d11870",
+			"uuid": "bcb4c596-d792-4283-be07-97f06a75e022",
 			"type": "cube",
 			"name": "hat",
 			"from": [
@@ -261,7 +261,7 @@
 			}
 		},
 		{
-			"uuid": "3825f965-5d76-4a8a-9694-872032740d57",
+			"uuid": "d63f144b-e54e-4206-9f9e-cb4927ee5f1a",
 			"type": "cube",
 			"name": "body",
 			"from": [
@@ -343,7 +343,7 @@
 			}
 		},
 		{
-			"uuid": "c94b8a28-f37f-4bcc-8ff1-54036ed12ef6",
+			"uuid": "f1f14d3e-1d98-4032-b0df-411596787d72",
 			"type": "cube",
 			"name": "jacket",
 			"from": [
@@ -425,7 +425,7 @@
 			}
 		},
 		{
-			"uuid": "ce84e997-1b10-42bc-b9b8-3669022ed393",
+			"uuid": "92ad692e-5a71-4bae-9928-f5baf9efaf37",
 			"type": "cube",
 			"name": "right_arm",
 			"from": [
@@ -507,7 +507,7 @@
 			}
 		},
 		{
-			"uuid": "9c6bc1ad-1fc9-405e-9c30-846c7217903e",
+			"uuid": "3fc9a3e2-26af-4825-96ce-1f2667400f72",
 			"type": "cube",
 			"name": "right_sleeve",
 			"from": [
@@ -589,7 +589,7 @@
 			}
 		},
 		{
-			"uuid": "2ee74482-3099-4117-8353-147f5f103a51",
+			"uuid": "1015840e-4801-4995-9722-83c612635304",
 			"type": "cube",
 			"name": "left_arm",
 			"from": [
@@ -671,7 +671,7 @@
 			}
 		},
 		{
-			"uuid": "28218e65-0976-4329-ac73-4c686b7f565d",
+			"uuid": "7cd68e31-c48e-45c0-9e1f-9153c2e19641",
 			"type": "cube",
 			"name": "left_sleeve",
 			"from": [
@@ -753,7 +753,7 @@
 			}
 		},
 		{
-			"uuid": "6c457452-e34c-416e-844b-401cc1e3d5fd",
+			"uuid": "cbd20973-fba9-46f3-afbb-327147c1f4c3",
 			"type": "cube",
 			"name": "right_leg",
 			"from": [
@@ -835,7 +835,7 @@
 			}
 		},
 		{
-			"uuid": "480819fb-9fae-436e-a8fd-4e6e8ab6f9b7",
+			"uuid": "3be02fb0-b62f-4cbf-9887-7d9f096919ff",
 			"type": "cube",
 			"name": "right_pants",
 			"from": [
@@ -917,7 +917,7 @@
 			}
 		},
 		{
-			"uuid": "a81ab13f-242c-4cfa-9a7d-fe4c2f6be682",
+			"uuid": "f1382e64-1c4b-462f-a4ca-7a6217563c48",
 			"type": "cube",
 			"name": "left_leg",
 			"from": [
@@ -999,7 +999,7 @@
 			}
 		},
 		{
-			"uuid": "9f5819db-0478-4040-8978-5dbc83e6c60f",
+			"uuid": "9649c78a-6ae0-4480-9e29-716a54718c02",
 			"type": "cube",
 			"name": "left_pants",
 			"from": [
@@ -1083,51 +1083,51 @@
 	],
 	"outliner": [
 		{
-			"uuid": "d8a3f4b5-b6ad-4222-b569-16345ea781ea",
+			"uuid": "be05c9d4-e930-4a0a-814e-800fab5baa7b",
 			"isOpen": true,
 			"children": [
-				"9e45ddb8-38b7-4837-91f9-c82909e2a435",
-				"9d022e67-9c89-4a1d-bf07-1b5192d11870"
+				"bbbc8be2-acb1-46d8-b100-7011cf60bad4",
+				"bcb4c596-d792-4283-be07-97f06a75e022"
 			]
 		},
 		{
-			"uuid": "5bdffb41-9c42-4fb2-a163-352d41b62381",
+			"uuid": "cb621082-0639-4c7a-8bdf-54de59d334da",
 			"isOpen": true,
 			"children": [
-				"3825f965-5d76-4a8a-9694-872032740d57",
-				"c94b8a28-f37f-4bcc-8ff1-54036ed12ef6"
+				"d63f144b-e54e-4206-9f9e-cb4927ee5f1a",
+				"f1f14d3e-1d98-4032-b0df-411596787d72"
 			]
 		},
 		{
-			"uuid": "c3d68a8d-2be0-469f-b91f-7b0957e7be99",
+			"uuid": "46245d17-46ed-4651-8123-a3a75e2c2923",
 			"isOpen": true,
 			"children": [
-				"ce84e997-1b10-42bc-b9b8-3669022ed393",
-				"9c6bc1ad-1fc9-405e-9c30-846c7217903e"
+				"92ad692e-5a71-4bae-9928-f5baf9efaf37",
+				"3fc9a3e2-26af-4825-96ce-1f2667400f72"
 			]
 		},
 		{
-			"uuid": "29b9efd4-28f4-4c38-bdab-a36c95074b20",
+			"uuid": "1749ac85-84c6-4f09-adc6-ae51aaadda53",
 			"isOpen": true,
 			"children": [
-				"2ee74482-3099-4117-8353-147f5f103a51",
-				"28218e65-0976-4329-ac73-4c686b7f565d"
+				"1015840e-4801-4995-9722-83c612635304",
+				"7cd68e31-c48e-45c0-9e1f-9153c2e19641"
 			]
 		},
 		{
-			"uuid": "f161ef1e-1686-4123-8237-aefabd64ba0f",
+			"uuid": "4e4506c1-f527-4497-be45-8307f60bb020",
 			"isOpen": true,
 			"children": [
-				"6c457452-e34c-416e-844b-401cc1e3d5fd",
-				"480819fb-9fae-436e-a8fd-4e6e8ab6f9b7"
+				"cbd20973-fba9-46f3-afbb-327147c1f4c3",
+				"3be02fb0-b62f-4cbf-9887-7d9f096919ff"
 			]
 		},
 		{
-			"uuid": "ca414211-58c0-4342-9ad1-1ded94df8974",
+			"uuid": "ca7c0704-ceda-4104-8f8c-f5b5fdf6fb2a",
 			"isOpen": true,
 			"children": [
-				"a81ab13f-242c-4cfa-9a7d-fe4c2f6be682",
-				"9f5819db-0478-4040-8978-5dbc83e6c60f"
+				"f1382e64-1c4b-462f-a4ca-7a6217563c48",
+				"9649c78a-6ae0-4480-9e29-716a54718c02"
 			]
 		}
 	],
