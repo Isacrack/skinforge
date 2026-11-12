@@ -483,6 +483,26 @@
       <button class="btn sm ghost" id="edUndo">↶ Deshacer</button>
       <div class="ed-swatches" id="edSwatches"></div>
     </div>
+    <details class="cape-details" id="capeDetails">
+      <summary id="capeSummary">Capa de la espalda (cape)</summary>
+      <div class="cape-body">
+        <div class="cape-presets" id="capePresets"></div>
+        <div class="cape-row">
+          <input type="text" id="capeQuery" placeholder="buscar capas: minecraft cape, mojang cape, alas…" enterkeyhint="search">
+          <button class="btn sm" id="capeSearchBtn">Buscar</button>
+          <button class="btn sm ghost" id="capeUploadBtn">Subir PNG</button>
+          <button class="btn sm ghost" id="capeClearBtn">Quitar</button>
+        </div>
+        <div class="cape-results" id="capeResults"></div>
+        <div class="cape-actions">
+          <button class="btn sm" id="capeBakeBtn">Pintar en la espalda</button>
+          <button class="btn sm ghost" id="capeDownloadBtn">Descargar capa.png</button>
+          <button class="btn sm ghost" id="capeGoogleBtn">Buscar en Google Imágenes</button>
+        </div>
+        <p class="muted" id="capeNote">La capa se ve en la vista 3D (usa «Girar»). «Pintar en la espalda» la mete en la textura de la skin para que se vea en el juego.</p>
+      </div>
+    </details>
+
     <div class="ed-layers">
       <div class="ed-layers-head">
         <b>Capas</b>
@@ -509,11 +529,17 @@
       <label class="arm"><input type="checkbox" id="showBaseChk" checked> Base</label>
       <label class="arm"><input type="checkbox" id="showCapasChk" checked> Capas</label>
       <label class="arm"><input type="checkbox" id="showArmorChk"> Armadura</label>
+      <label class="arm"><input type="checkbox" id="showCapeChk" checked> Capa</label>
+      <label class="arm yaw" title="Girar el muñeco">Girar <input type="range" id="yawRange" min="-180" max="180" step="5" value="0"></label>
       <span class="muted">las capas (sombrero, chaqueta…) respetan la transparencia</span>
     </div>
     <div class="muted" id="dollMeta"></div>
     <div class="doll-note" id="dollNote"></div>
     <div class="box-editor" id="boxEditor"></div>
+    <details class="geo-details" id="geoDetails">
+      <summary id="geoSummary">Geometría del modelo</summary>
+      <div class="geo-editor" id="geoEditor"></div>
+    </details>
     <button class="btn sm" id="dollClose">Cerrar</button>
   </div>
 </div>

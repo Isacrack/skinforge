@@ -657,6 +657,60 @@ function pngDataUrl(file) {
   assert.ok(/BOX/.test(out), 'el verificador lista los BOX');
   console.log('  ✓ verificado con el parser independiente en Python');
 
+  /* 7. geometría: editar cajas y bajar el .bbmodel */
+  await page.click('.skin-card .doll-btn');
+  await page.waitForFunction(() => document.querySelector('#dollCanvas')._lce3d, null, { timeout: 15000 });
+  await page.waitForTimeout(300);
+  const sumGeo = await page.textContent('#geoSummary');
+  assert.ok(/12 cajas/.test(sumGeo), 'la geometría anuncia las cajas: ' + sumGeo);
+  await page.click('#geoSummary');
+  await page.waitForTimeout(200);
+  assert.strictEqual(await page.locator('.geo-row').count(), 12, 'el modelo estándar tiene 12 cajas editables');
+
+  const anchoNuevo = await page.evaluate(() => {
+    const i = document.querySelector('.geo-row input[data-act="w"]');
+    const w2 = String(Number(i.value) + 1);
+    i.value = w2;
+    i.dispatchEvent(new Event('input', { bubbles: true }));
+    return Number(w2);
+  });
+  await page.waitForTimeout(400);
+  const metaGeo = await page.textContent('#dollMeta');
+  assert.ok(/modelo 3D: 12 cajas/.test(metaGeo), 'el modal sabe que hay modelo propio: ' + metaGeo);
+
+  const [descargaGeo] = await Promise.all([page.waitForEvent('download'), page.click('#geoDl')]);
+  const rutaGeo = path.join(OUT, 'geometria.bbmodel');
+  await descargaGeo.saveAs(rutaGeo);
+  const modelo = JSON.parse(fs.readFileSync(rutaGeo, 'utf8'));
+  assert.strictEqual(modelo.meta.format_version, '5.0', 'el .bbmodel es de Blockbench 5');
+  assert.strictEqual(modelo.elements.length, 12, 'salen las 12 cajas');
+  const cabeza = modelo.elements.find((e) => e.name === 'head');
+  assert.strictEqual(cabeza.to[0] - cabeza.from[0], anchoNuevo, 'la cabeza va con el ancho que pusimos: ' + (cabeza.to[0] - cabeza.from[0]));
+  assert.strictEqual(modelo.outliner.length, 6, 'el outliner lleva las 6 carpetas');
+
+  await page.selectOption('#geoAddType', 'HEADWEAR');
+  await page.click('#geoAddBtn');
+  await page.waitForTimeout(400);
+  assert.strictEqual(await page.locator('.geo-row').count(), 13, 'se puede añadir una caja');
+  await page.locator('.geo-row').last().locator('.del').click();
+  await page.waitForTimeout(300);
+  assert.strictEqual(await page.locator('.geo-row').count(), 12, 'y borrarla');
+
+  await page.locator('#dollCanvas').screenshot({ path: path.join(OUT, 'shot-geometria.png') });
+  await page.click('#dollClose');
+  await page.waitForTimeout(200);
+
+  const [descargaPck2] = await Promise.all([page.waitForEvent('download'), page.click('#downloadBtn')]);
+  const rutaPck2 = path.join(OUT, 'geo.pck');
+  await descargaPck2.saveAs(rutaPck2);
+  const buf2 = fs.readFileSync(rutaPck2);
+  const leido = PCK.readPck(buf2.buffer.slice(buf2.byteOffset, buf2.byteOffset + buf2.byteLength));
+  const todas = leido.assets.filter((a) => a.type === 0)
+    .flatMap((a) => a.params.filter((p) => p[0] === 'BOX').map((p) => p[1]));
+  const cabezaPck = todas.find((b) => b.startsWith('HEAD '));
+  assert.strictEqual(Number(cabezaPck.split(' ')[4]), anchoNuevo, 'el .pck lleva el BOX con el ancho nuevo: ' + cabezaPck);
+  console.log('  ✓ geometría editable en la app y .bbmodel descargable con los cambios');
+
   assert.deepStrictEqual(errors, [], 'errores de consola: ' + errors.join(' | '));
   console.log('\nE2E MODELO 3D OK');
   await browser.close();

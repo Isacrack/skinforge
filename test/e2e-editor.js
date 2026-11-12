@@ -168,6 +168,46 @@ const leerCanvas = (page) => page.evaluate(() => {
   assert.deepStrictEqual(errsMovil, [], 'errores en móvil: ' + errsMovil.join(' | '));
   console.log('  ✓ en móvil: táctil, cuadrado, sin scroll lateral y botones grandes');
 
+  /* 9. capa de la espalda (cape) */
+  await page.click('.skin-card .edit-btn');
+  await page.waitForFunction(() => document.querySelector('#editOverlay').classList.contains('show'));
+  await page.waitForTimeout(300);
+  await page.click('#capeSummary');
+  await page.waitForTimeout(200);
+  assert.strictEqual(await page.locator('.cape-chip').count(), 6, 'hay 6 capas de ejemplo listas para tocar');
+  await page.locator('.cape-chip').nth(2).click();
+  await page.waitForTimeout(300);
+  const resumenCapa = await page.textContent('#capeSummary');
+  assert.ok(/Verde bosque/.test(resumenCapa), 'la capa elegida se anuncia: ' + resumenCapa);
+  const chips = await page.evaluate(() => [...document.querySelectorAll('.cape-chip')]
+    .map((b) => Math.round(b.getBoundingClientRect().height)));
+  assert.ok(chips.every((h) => h >= 44), 'las capas se tocan con el dedo (≥44 px): ' + chips.join(','));
+
+  const [descargaCapa] = await Promise.all([page.waitForEvent('download'), page.click('#capeDownloadBtn')]);
+  const rutaCapa = path.join(OUT, 'capa.png');
+  await descargaCapa.saveAs(rutaCapa);
+  const cabecera = fs.readFileSync(rutaCapa);
+  assert.strictEqual(cabecera.slice(1, 4).toString(), 'PNG', 'la capa se baja como PNG');
+  const anchoCapa = cabecera.readUInt32BE(16), altoCapa = cabecera.readUInt32BE(20);
+  assert.deepStrictEqual([anchoCapa, altoCapa], [64, 32], 'la capa es 64×32 (como las del juego): ' + anchoCapa + '×' + altoCapa);
+
+  const capasAntes = await page.locator('.ed-layer').count();
+  await page.click('#capeBakeBtn');
+  await page.waitForTimeout(700);
+  assert.strictEqual(await page.locator('.ed-layer').count(), capasAntes + 1, '«Pintar en la espalda» añade la capa a la lista');
+  const espalda = await page.evaluate(() => {
+    const c = document.querySelector('#edCanvas');
+    const sc = c.width / 64;
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    const px = (x, y) => { const o = (Math.floor(y * sc + sc / 2) * c.width + Math.floor(x * sc + sc / 2)) * 4;
+      return [d[o], d[o + 1], d[o + 2], d[o + 3]]; };
+    return px(36, 42);   // centro de la espalda de la chaqueta
+  });
+  assert.ok(espalda[3] > 200 && espalda[1] > espalda[0], 'la espalda de la skin queda pintada: ' + espalda.join(','));
+  await page.click('#edCancel').catch(() => {});
+  await page.waitForTimeout(300);
+  console.log('  ✓ capa de la espalda: 6 ejemplos, 64×32, «Pintar en la espalda» y descarga');
+
   assert.deepStrictEqual(errors, [], 'errores de consola: ' + errors.join(' | '));
   console.log('\nE2E EDITOR SKIN OK');
   await browser.close();

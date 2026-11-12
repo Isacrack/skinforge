@@ -263,9 +263,55 @@ Toca una fila de capa para **pintar en ella**: el lápiz escribe siempre en la c
 Hay una capa de prueba lista en [`ejemplos/capa-sombrero.png`](ejemplos/capa-sombrero.png): súbela sobre
 cualquier skin y mira la vista 3D.
 
+### Capa de la espalda (cape)
+
+El editor tiene otra sección plegable, **Capa de la espalda (cape)**, porque en LCE la capa **no va dentro
+de la skin**: son ficheros aparte (`dlccape*`, `defcape*`, o el `Default_Cape.png` global del juego), y
+tampoco existe un tipo de caja `CAPE`. Así que aquí se trabaja como una pieza independiente:
+
+- **6 capas de ejemplo** dibujadas en la propia página (roja, naranja, verde, morada, azul, negra): un toque y ya está.
+- **Buscar** en Internet: busca **miniaturas dentro de la app** (Openverse y Wikimedia Commons, imágenes con
+  licencia libre). Toca una miniatura y se convierte en capa. *(Necesita la página servida por http/https,
+  como en GitHub Pages; si abres el `index.html` con doble clic el buscador no puede salir a la red y te lo dice.)*
+- **Subir PNG**: cualquier imagen (una captura, un logo, una capa del juego de 64×32). Se recorta y se
+  encaja en el hueco de la capa (delantera en `1,1` y trasera en `12,1` de una textura de 64×32).
+- **Quitar**: deja la skin sin capa.
+- **Pintar en la espalda**: mete la capa **en la textura de la skin**, en la cara trasera de la chaqueta
+  (`32,36`, 8×12), para que se note también cuando la skin se vea en el juego sin soporte de capas.
+- **Descargar capa.png**: saca la capa como PNG de 64×32.
+- **Buscar en Google Imágenes**: abre la búsqueda en otra pestaña para cuando quieras un PNG concreto
+  (Google no deja buscar desde una página sin clave, así que la app usa APIs libres para las miniaturas).
+
+En la vista **3D** hay una casilla **Capa** y un deslizador **Girar** (0–360°) para verla colgando de la
+espalda, y el muñeco gira con ella:
+
+![La capa colgando de la espalda, visto desde atrás](capturas/capa-espalda.png)
+
 ![La skin con la capa puesta, en 3D](capturas/capa-3d.png)
 
 ![El mismo editor en un móvil](capturas/editor-movil.png)
+
+### Editar la geometría y bajar el `.bbmodel`
+
+En la vista **3D** hay un panel plegable **Geometría: N cajas · `.bbmodel`** con una fila por caja del modelo:
+
+| Campo | Qué es | Ejemplo |
+|---|---|---|
+| **An / Al / Fd** | ancho, alto y fondo de la caja | `8 8 8` para la cabeza |
+| **X / Y / Z** | posición (el mismo `X Y Z` del parámetro `BOX`) | `-4 -8 -4` |
+| **Inf** | inflado, en píxeles (`0` = ninguno) | `1` = casco un poco más grande |
+| **✕** | borra esa caja | |
+| **＋ Añadir caja** | añade una caja eligiendo la parte (`HEAD`, `HEADWEAR`, `BODY`, `JACKET`, `ARM0`, `SLEEVE0`, `PANTS0`…) | |
+
+Los cambios se aplican al momento (se ve en el muñeco y en el `.pck` exportado), y **Descargar `.bbmodel`**
+saca la geometría tal como la has dejado, en formato Blockbench 5.0 y con el *outliner* en seis carpetas
+(`head`, `body`, `right_arm`…), para seguir trabajando en Blockbench:
+
+![Editor de cajas y descarga del .bbmodel](capturas/geometria.png)
+
+Si la skin usaba el modelo estándar, el editor arranca con esas **12 cajas**; al tocar cualquier valor la
+skin pasa a tener modelo propio (el `XMLVERSION` sube a 3 si hay inflado) y el `INFO`/`BOX` del `.pck`
+se reescribe con lo que hay en pantalla.
 
 ### Mover la armadura en vez de ocultarla (`OFFSET`)
 

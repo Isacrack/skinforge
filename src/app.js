@@ -19,6 +19,8 @@
     resolution: 'auto',  // 'auto' | '64x64' | '64x32' | 'orig'
     xmlVersion: 0,
     showArmor: false,
+    showCape: true,
+    yaw: null,
     showBase: true,
     showCapas: true,
     lastBuild: null,
@@ -753,6 +755,14 @@
     const boxes = skin.model3d ? skin.model3d.boxes : standardBoxesFor(skin);
     armorSeleccionada = null;
 
+    const actualizarMeta = () => {
+      const m = $('#dollMeta');
+      if (!m) return;
+      m.textContent = skin.model3d
+        ? skin.w + '×' + skin.h + ' · modelo 3D: ' + boxes.length + ' cajas · XMLVERSION ' + skin.model3d.xmlVersion
+        : skin.w + '×' + skin.h + ' · ' + skin.model + ' · ' + humanSize(skin.png.length);
+    };
+
     const verArmadura = () => {
       const chk = $('#showArmorChk');
       return !!(chk && chk.checked);
@@ -760,11 +770,14 @@
 
     const pintar = (sel) => {
       const chkB = $('#showBaseChk'), chkC = $('#showCapasChk');
+      const chkCape = $('#showCapeChk');
       drawModel3D(c, skin, {
         boxes: boxes,
         selected: sel,
         base: chkB ? chkB.checked : true,
         capas: chkC ? chkC.checked : true,
+        capa: chkCape ? chkCape.checked : true,
+        yaw: state.yaw == null ? undefined : state.yaw,
         piezas: verArmadura() ? undefined : []   // la armadura solo si la pides
       });
       repintar3D = () => pintar(armorSeleccionada);
@@ -806,6 +819,20 @@
       chkBase.checked = state.showBase !== false;
       chkBase.onchange = () => { state.showBase = chkBase.checked; pintar(armorSeleccionada); };
     }
+    const chkCape2 = $('#showCapeChk');
+    if (chkCape2) {
+      chkCape2.checked = state.showCape !== false;
+      chkCape2.onchange = () => { state.showCape = chkCape2.checked; pintar(armorSeleccionada); };
+    }
+    const yawInp = $('#yawRange');
+    if (yawInp) {
+      yawInp.value = String(Math.round(((state.yaw == null ? Math.PI - 0.6 : state.yaw) - (Math.PI - 0.6)) * 180 / Math.PI));
+      yawInp.oninput = () => {
+        state.yaw = (Math.PI - 0.6) + Number(yawInp.value) * Math.PI / 180;
+        pintar(armorSeleccionada);
+      };
+    }
+
     const chkCapas = $('#showCapasChk');
     if (chkCapas) {
       chkCapas.checked = state.showCapas !== false;
@@ -813,6 +840,7 @@
     }
 
     renderEditor(skin);
+    renderGeo(skin, boxes, () => { pintar(null); actualizarMeta(); });
     pintar(null);
 
     // arrastrar piezas de armadura
@@ -1006,6 +1034,170 @@
       lce: {
         nota: 'Modelo de ejemplo de SkinForge. Renombra los cubos como head, hat, body, jacket, right_arm, right_sleeve, left_arm, left_sleeve, right_leg, right_pants, left_leg, left_pants.',
         armor_hint: 'lce_armor: 1 casco · 2 peto · 4 gregüesco · 8 botas (se suman)'
+      }
+    };
+  }
+
+  /** carpetas del outliner para cada tipo de caja */
+  const FOLDER_OF_TYPE = {
+    HEAD: 'head', HEADWEAR: 'head',
+    BODY: 'body', JACKET: 'body', WAIST: 'body', BODYARMOR: 'body', BELT: 'body',
+    ARM0: 'right_arm', SLEEVE0: 'right_arm', ARMARMOR0: 'right_arm',
+    ARM1: 'left_arm', SLEEVE1: 'left_arm', ARMARMOR1: 'left_arm',
+    LEG0: 'right_leg', PANTS0: 'right_leg', LEGGING0: 'right_leg', SOCK0: 'right_leg', BOOT0: 'right_leg',
+    LEG1: 'left_leg', PANTS1: 'left_leg', LEGGING1: 'left_leg', SOCK1: 'left_leg', BOOT1: 'left_leg'
+  };
+
+  /**
+   * .bbmodel (Blockbench 5.0) a partir de las cajas LCE que hay ahora mismo,
+   * para poder retocar la geometría fuera de la página.
+   */
+  function bbmodelFromBoxes(skin, boxes) {
+    const nuevoUuid = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID()
+      : 'u' + Date.now().toString(16) + Math.random().toString(16).slice(2, 10));
+    const caras = (from, to, uv) => {
+      const w = Math.abs(to[0] - from[0]), h = Math.abs(to[1] - from[1]), d = Math.abs(to[2] - from[2]);
+      const u = uv[0], v = uv[1];
+      return {
+        north: { uv: [u + d, v + d, u + d + w, v + d + h] },
+        east: { uv: [u, v + d, u + d, v + d + h] },
+        south: { uv: [u + d + w, v + d, u + 2 * d + w, v + d + h] },
+        west: { uv: [u + 2 * d + w, v + d, u + 2 * (d + w), v + d + h] },
+        up: { uv: [u + d, v, u + d + w, v + d] },
+        down: { uv: [u + d + w, v, u + 2 * d + w, v + d] }
+      };
+    };
+    const elements = boxes.map((box) => {
+      const ms = PCK.boxToModelSpace(box);
+      const from = [Math.round(ms.min[0]), Math.round(ms.min[1]), Math.round(ms.min[2])];
+      const to = [Math.round(ms.max[0]), Math.round(ms.max[1]), Math.round(ms.max[2])];
+      const uv = [Math.round(ms.uv[0]), Math.round(ms.uv[1])];
+      return {
+        uuid: nuevoUuid(), type: 'cube', name: box.type.toLowerCase(),
+        from: from, to: to, origin: [0, 24, 0],
+        uv_offset: uv, box_uv: true, rotation: [0, 0, 0],
+        inflate: box.inflate || 0, lce_armor: box.armor || 0,
+        faces: caras(from, to, uv)
+      };
+    });
+    const nombres = ['head', 'body', 'right_arm', 'left_arm', 'right_leg', 'left_leg'];
+    const grupos = nombres.map((nombre) => ({
+      uuid: nuevoUuid(), name: nombre, origin: [0, 24, 0], rotation: [0, 0, 0],
+      miembros: elements.filter((e) => FOLDER_OF_TYPE[e.name.toUpperCase()] === nombre).map((e) => e.uuid)
+    })).filter((g) => g.miembros.length);
+    const nombre = (skin && skin.name) ? skin.name : 'Jugador';
+    return {
+      meta: { format_version: '5.0', model_format: 'java_block', box_uv: true },
+      name: nombre + ' (geometría)',
+      resolution: { width: skin ? skin.w : 64, height: skin ? skin.h : 64 },
+      groups: grupos.map((g) => ({ uuid: g.uuid, name: g.name, origin: g.origin, rotation: [0, 0, 0] })),
+      elements: elements,
+      outliner: grupos.map((g) => ({ uuid: g.uuid, isOpen: true, children: g.miembros })),
+      textures: [{
+        name: safeFileName(nombre) + '.png', id: '0',
+        source: skin ? skin.thumbUrl : blankSkinDataUrl(64, 64),
+        uv_width: skin ? skin.w : 64, uv_height: skin ? skin.h : 64, particle: false
+      }],
+      lce: {
+        nota: 'Geometría exportada desde SkinForge: cada cubo es una caja BOX de Legacy Console Edition.',
+        armor_hint: 'lce_armor: 1 casco · 2 peto · 4 gregüesco · 8 botas (se suman)'
+      }
+    };
+  }
+
+  /* --------------------- editor de geometría (cajas) -------------------- */
+  function renderGeo(skin, boxes, onPaint) {
+    const host = $('#geoEditor');
+    if (!host) return;
+    host.innerHTML = '';
+    const sum = $('#geoSummary');
+    if (sum) sum.textContent = 'Geometría: ' + boxes.length + ' cajas · .bbmodel';
+    const head = document.createElement('div');
+    head.className = 'geo-head';
+    head.innerHTML = '<b>Geometría (' + boxes.length + ' cajas)</b>' +
+      '<button class="btn sm ghost" id="geoDl" title="Descargar esta geometría como .bbmodel">Descargar .bbmodel</button>' +
+      '<span class="muted">toca un número para cambiarlo</span>';
+    host.appendChild(head);
+
+    boxes.forEach((box, i) => {
+      const row = document.createElement('div');
+      row.className = 'geo-row';
+      const campo = (act, label, val, min, max) =>
+        '<label class="geo-f"><span>' + label + '</span>' +
+        '<input type="number" data-i="' + i + '" data-act="' + act + '" value="' + val +
+        '" min="' + min + '" max="' + max + '" step="1" inputmode="numeric"></label>';
+      row.innerHTML =
+        '<div class="geo-type">' + box.type + '<span>' + (box.armor ? PCK.armorLabel(box.armor) : 'siempre') + '</span></div>' +
+        campo('w', 'An', box.size[0], 1, 64) + campo('h', 'Al', box.size[1], 1, 64) + campo('d', 'Fd', box.size[2], 1, 64) +
+        campo('x', 'X', box.pos[0], -32, 32) + campo('y', 'Y', box.pos[1], -32, 32) + campo('z', 'Z', box.pos[2], -32, 32) +
+        campo('inf', 'Inf', box.inflate || 0, 0, 4) +
+        '<button class="icon-btn del" data-i="' + i + '" data-act="del" title="Quitar caja">✕</button>';
+      host.appendChild(row);
+    });
+
+    const add = document.createElement('div');
+    add.className = 'geo-add';
+    add.innerHTML = '<select id="geoAddType">' +
+      PCK.BOX_TYPES.map((t) => '<option value="' + t + '">' + t + '</option>').join('') +
+      '</select><button class="btn sm" id="geoAddBtn">＋ Añadir caja</button>';
+    host.appendChild(add);
+
+    const persistir = () => {
+      if (!skin.model3d) {
+        skin.model3d = { fileName: '(editado en SkinForge)', boxes: boxes, parts: [], warnings: [],
+          xmlVersion: 2, cubes: boxes.length };
+      }
+      skin.model3d.boxes = boxes;
+      skin.model3d.xmlVersion = boxes.some((b) => b.inflate) ? 3 : 2;
+      skin.model3d.cubes = boxes.length;
+      if (onPaint) onPaint();
+      render();
+    };
+
+    host.oninput = (e) => {
+      const inp = e.target;
+      if (!inp.dataset || !inp.dataset.act || inp.dataset.act === 'del') return;
+      const i = Number(inp.dataset.i);
+      const box = boxes[i];
+      if (!box) return;
+      const v = Math.max(Number(inp.min), Math.min(Number(inp.max), Math.round(Number(inp.value) || 0)));
+      const act = inp.dataset.act;
+      if (act === 'w') box.size[0] = Math.max(1, v);
+      else if (act === 'h') box.size[1] = Math.max(1, v);
+      else if (act === 'd') box.size[2] = Math.max(1, v);
+      else if (act === 'x') box.pos[0] = v;
+      else if (act === 'y') box.pos[1] = v;
+      else if (act === 'z') box.pos[2] = v;
+      else if (act === 'inf') box.inflate = Math.max(0, v);
+      persistir();
+    };
+    host.onclick = (e) => {
+      const b = e.target.closest('[data-act="del"]');
+      if (b) {
+        if (boxes.length === 1) { toast('Tiene que quedar al menos una caja', 'warn'); return; }
+        boxes.splice(Number(b.dataset.i), 1);
+        persistir();
+        renderGeo(skin, boxes, onPaint);
+        return;
+      }
+      if (e.target.id === 'geoAddBtn') {
+        const tipo = $('#geoAddType').value;
+        const std = STANDARD_SIZE[tipo] || [4, 4, 4];
+        const nueva = PCK.cubeToBox(tipo, [-Math.round(std[0] / 2), 24 - std[1], -Math.round(std[2] / 2)],
+          [Math.round(std[0] / 2), 24, Math.round(std[2] / 2)], [0, 0], {
+            armor: ARMOR_OF_TYPE[tipo] || 0, inflate: 0, mirror: false
+          });
+        boxes.push(nueva);
+        persistir();
+        renderGeo(skin, boxes, onPaint);
+        toast('Caja <b>' + tipo + '</b> añadida (' + std.join('×') + '). Retoca sus números o su UV.', 'ok');
+        return;
+      }
+      if (e.target.id === 'geoDl') {
+        const json = bbmodelFromBoxes(skin, boxes);
+        const bytes = new TextEncoder().encode(JSON.stringify(json, null, 2));
+        download(bytes, safeFileName(skin.name || 'skin') + '-geometria.bbmodel');
+        toast('Descargado el <code>.bbmodel</code> con las ' + boxes.length + ' cajas', 'ok');
       }
     };
   }
@@ -1435,6 +1627,222 @@
     return { skin, parsed, res };
   }
 
+  /* ------------------------- capa de la espalda (cape) ------------------- */
+  /** capas de ejemplo dibujadas aquí mismo (no hacen falta archivos) */
+  const CAPE_PRESETS = [
+    { id: 'roja', name: 'Roja clásica', base: '#a3141e', det: '#f2e9d8', tipo: 'franja' },
+    { id: 'naranja', name: 'Naranja', base: '#c8641c', det: '#f8d9a0', tipo: 'logo' },
+    { id: 'verde', name: 'Verde bosque', base: '#2f6b2f', det: '#8fd08f', tipo: 'franja' },
+    { id: 'morada', name: 'Morada', base: '#4b2a7a', det: '#c9a6f0', tipo: 'logo' },
+    { id: 'azul', name: 'Azul hielo', base: '#1f4f8a', det: '#a8d5f5', tipo: 'franja' },
+    { id: 'negra', name: 'Negra', base: '#20232a', det: '#7d8590', tipo: 'logo' }
+  ];
+
+  /** dibuja una capa 64×32 (delantera en 1,1 y trasera en 12,1) */
+  function capePresetCanvas(p) {
+    const c = document.createElement('canvas');
+    c.width = 64; c.height = 32;
+    const x = c.getContext('2d');
+    x.clearRect(0, 0, 64, 32);
+    [[1, 1], [12, 1]].forEach(([ox, oy]) => {
+      x.fillStyle = p.base;
+      x.fillRect(ox, oy, 10, 16);
+      x.fillStyle = p.det;
+      if (p.tipo === 'franja') {
+        x.fillRect(ox, oy + 1, 10, 1);
+        x.fillRect(ox, oy + 13, 10, 1);
+        x.fillRect(ox + 4, oy + 4, 2, 6);
+      } else {
+        x.fillRect(ox + 3, oy + 4, 4, 4);
+        x.fillRect(ox + 4, oy + 3, 2, 6);
+        x.fillRect(ox + 2, oy + 14, 6, 1);
+      }
+      x.strokeStyle = 'rgba(0,0,0,0.35)';
+      x.strokeRect(ox + 0.5, oy + 0.5, 9, 15);
+    });
+    return c;
+  }
+
+  /** deja cualquier imagen como capa utilizable (64×32) */
+  function capeFromImage(img) {
+    const c = document.createElement('canvas');
+    c.width = 64; c.height = 32;
+    const x = c.getContext('2d');
+    x.imageSmoothingEnabled = false;
+    const esTexturaCapa = (img.width === 64 && (img.height === 32 || img.height === 64));
+    if (esTexturaCapa) {
+      x.drawImage(img, 0, 0);
+    } else {
+      [[1, 1], [12, 1]].forEach(([ox, oy]) => {
+        x.save();
+        x.beginPath(); x.rect(ox, oy, 10, 16); x.clip();
+        const esc = Math.max(10 / img.width, 16 / img.height);
+        const w = img.width * esc, h = img.height * esc;
+        x.drawImage(img, ox + (10 - w) / 2, oy + (16 - h) / 2, w, h);
+        x.restore();
+      });
+    }
+    return c;
+  }
+
+  function capeSet(skin, canvas, name) {
+    skin.cape = { canvas: canvas, name: name || 'capa' };
+    const sum = $('#capeSummary');
+    if (sum) sum.textContent = 'Capa de la espalda: ' + (name || 'puesta');
+    if (typeof repintar3D === 'function' && repintar3D) repintar3D();
+    toast('Capa <b>' + escapeHtml(name || '') + '</b> puesta. Gira el muñeco en la vista 3D para verla.', 'ok');
+  }
+
+  function renderCapeControls(skin) {
+    const box = $('#capePresets');
+    if (!box) return;
+    box.innerHTML = '';
+    const chip = (src, name, activa) => {
+      const b = document.createElement('button');
+      b.className = 'cape-chip' + (activa ? ' on' : '');
+      b.title = name;
+      const mini = document.createElement('canvas');
+      mini.width = 22; mini.height = 36;
+      const mx = mini.getContext('2d');
+      mx.imageSmoothingEnabled = false;
+      mx.drawImage(src, 1, 1, 10, 16, 0, 0, 22, 36);
+      b.appendChild(mini);
+      return b;
+    };
+    CAPE_PRESETS.forEach((p) => {
+      const b = chip(capePresetCanvas(p), p.name, false);
+      b.addEventListener('click', () => { capeSet(skin, capePresetCanvas(p), p.name); renderCapeControls(skin); });
+      box.appendChild(b);
+    });
+    if (skin.cape) {
+      const b = chip(skin.cape.canvas, skin.cape.name, true);
+      b.addEventListener('click', () => toast('Capa actual: <b>' + escapeHtml(skin.cape.name) + '</b>', 'info'));
+      box.appendChild(b);
+    }
+  }
+
+  /** busca en Openverse (fotos/arte con licencia) */
+  async function buscarOpenverse(q) {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 12000);
+    try {
+      const res = await fetch('https://api.openverse.org/v1/images/?q=' + encodeURIComponent(q) + '&page_size=12',
+        { headers: { Accept: 'application/json' }, signal: ctl.signal });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.results || []).filter((r) => r.url).map((r) => ({
+        titulo: r.title || 'imagen',
+        miniatura: r.thumbnail || r.url,
+        origen: r.url
+      }));
+    } catch (e) { return []; } finally { clearTimeout(t); }
+  }
+
+  /** busca en Wikimedia Commons (miniaturas con CORS permitido) */
+  async function buscarCommons(q) {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 12000);
+    try {
+      const url = 'https://commons.wikimedia.org/w/api.php?action=query&generator=search' +
+        '&gsrsearch=' + encodeURIComponent(q) + '&gsrnamespace=6&gsrlimit=8' +
+        '&prop=imageinfo&iiprop=url&iiurlwidth=400&format=json&origin=*';
+      const res = await fetch(url, { signal: ctl.signal });
+      if (!res.ok) return [];
+      const data = await res.json();
+      const pages = data.query && data.query.pages ? Object.values(data.query.pages) : [];
+      return pages.map((p) => {
+        const info = (p.imageinfo && p.imageinfo[0]) || {};
+        return {
+          titulo: (p.title || '').replace(/^File:/, '').replace(/\.[a-z]+$/i, ''),
+          miniatura: info.thumburl || info.url,
+          origen: info.thumburl || info.url
+        };
+      }).filter((r) => r.origen);
+    } catch (e) { return []; } finally { clearTimeout(t); }
+  }
+
+  async function capeBuscar(skin, q) {
+    const box = $('#capeResults');
+    if (!box) return;
+    box.innerHTML = '<span class="muted">Buscando…</span>';
+    if (location.protocol === 'file:') {
+      box.innerHTML = '<span class="muted">El buscador necesita la página abierta desde el servidor (http/https): ' +
+        'en <b>isacrack.github.io/skinforge</b> funciona. Aquí usa las capas de arriba o «Subir PNG».</span>';
+      return;
+    }
+    const [ov, cm] = await Promise.all([buscarOpenverse(q), buscarCommons(q)]);
+    const items = ov.concat(cm).slice(0, 18);
+    if (!items.length) {
+      box.innerHTML = '<span class="muted">Sin resultados. Prueba «minecraft cape», «cape png», «ala»…</span>';
+      return;
+    }
+    box.innerHTML = '';
+    items.forEach((it) => {
+      const b = document.createElement('button');
+      b.className = 'cape-res';
+      b.title = it.titulo;
+      const im = document.createElement('img');
+      im.alt = '';
+      im.loading = 'lazy';
+      im.src = it.miniatura;
+      im.addEventListener('error', () => {
+        if (im.dataset.ya === '1') { b.style.display = 'none'; return; }
+        im.dataset.ya = '1';
+        im.src = it.origen;   // si la miniatura falla, la original
+      });
+      b.appendChild(im);
+      b.addEventListener('click', async () => {
+        b.classList.add('busy');
+        try {
+          const img = await new Promise((res2, rej) => {
+            const i = new Image();
+            i.crossOrigin = 'anonymous';
+            i.onload = () => res2(i);
+            i.onerror = () => rej(new Error('bloqueada'));
+            i.src = it.origen;
+          });
+          capeSet(skin, capeFromImage(img), (it.titulo || 'capa').slice(0, 28));
+          renderCapeControls(skin);
+        } catch (err) {
+          toast('Esa imagen no deja usarse (su servidor bloquea la descarga). Abre ' +
+            '<b>Google Imágenes</b>, guarda el PNG y súbelo con «Subir PNG».', 'warn');
+        }
+        b.classList.remove('busy');
+      });
+      box.appendChild(b);
+    });
+  }
+
+  /** pinta la capa en la espalda de la textura (para que se vea en el juego) */
+  async function capeBake(skin) {
+    if (!skin.cape) { toast('Primero elige o sube una capa', 'warn'); return; }
+    const capa = edNewLayer('capa-espalda', 'png');
+    const ctx = capa.canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    // cara trasera del JACKET: uv 16,32 + desplegado (sur) → 32,36, 8×12
+    const u = 32, v = 36, w = 8, h = 12;
+    if (skin.w >= u + w && skin.h >= v + h) {
+      ctx.drawImage(skin.cape.canvas, 1, 1, 10, 16, u, v, w, h);
+    }
+    const base = skin.layers && skin.layers.length ? skin.layers : [await edBaseLayer(skin)];
+    ed.skin = skin;
+    ed.layers = base.concat([capa]);
+    const flat = edFlatten();
+    const bytes = await canvasToPngBytes(flat);
+    skin.png = bytes;
+    skin.thumbUrl = canvasToUrl(flat);
+    skin.warn = bytes.length > MAX_SAFE_SKIN_BYTES ? 'PNG grande (' + humanSize(bytes.length) + '): puede fallar en consola' : '';
+    skin.layers = ed.layers;
+    if (ed.skin === skin && $('#editOverlay').classList.contains('show')) {
+      ed.sel = ed.layers.length - 1;
+      edPushUndo();
+      edRenderLayers();
+      edRender();
+    }
+    render();
+    toast('Capa pintada en la espalda de la skin (' + humanSize(bytes.length) + ')', 'ok');
+  }
+
   /* --------------------- editor de skin: píxeles y capas ----------------- */
   /**
    * Editor por skin pensado también para el móvil: pinta píxeles con el dedo,
@@ -1482,6 +1890,21 @@
       name: name, canvas: c, visible: true, opacity: 1, kind: kind || 'empty' };
   }
 
+  /** canvas con los píxeles actuales de la skin (capa base) */
+  async function edBaseLayer(skin) {
+    const base = document.createElement('canvas');
+    base.width = skin.w; base.height = skin.h;
+    const bctx = base.getContext('2d');
+    bctx.imageSmoothingEnabled = false;
+    try {
+      const img = await new Promise((res, rej) => {
+        const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = skin.thumbUrl;
+      });
+      bctx.drawImage(img, 0, 0, skin.w, skin.h);
+    } catch (e) { /* skin vacía */ }
+    return { id: 'base', name: 'Skin (base)', canvas: base, visible: true, opacity: 1, kind: 'base' };
+  }
+
   async function edOpen(skin) {
     ed.skin = skin;
     ed.zoom = 8; ed.tool = 'pencil'; ed.sel = 0; ed.undo = []; ed.drawing = false;
@@ -1490,23 +1913,14 @@
     $$('#edTools .tool').forEach((b) => b.classList.toggle('sel', b.dataset.tool === 'pencil'));
 
     if (!skin.layers || !skin.layers.length) {
-      const base = document.createElement('canvas');
-      base.width = skin.w; base.height = skin.h;
-      const bctx = base.getContext('2d');
-      bctx.imageSmoothingEnabled = false;
-      try {
-        const img = await new Promise((res, rej) => {
-          const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = skin.thumbUrl;
-        });
-        bctx.drawImage(img, 0, 0, skin.w, skin.h);
-      } catch (e) { /* skin vacía */ }
-      skin.layers = [{ id: 'base', name: 'Skin (base)', canvas: base, visible: true, opacity: 1, kind: 'base' }];
+      skin.layers = [await edBaseLayer(skin)];
     }
     ed.layers = skin.layers;
     ed.sel = ed.layers.length - 1;
     ed.snapshot = edClone(ed.layers);
     $('#editOverlay').classList.add('show');
     edBind();
+    renderCapeControls(skin);
     ed.zoom = edFit();
     edRender();
     requestAnimationFrame(() => { ed.zoom = edFit(); edRender(); });
@@ -1807,6 +2221,62 @@
       toast('Capas aplanadas sobre la base', 'ok');
     });
 
+    // ---- capa de la espalda ----
+    const capeUpload = document.createElement('input');
+    capeUpload.type = 'file';
+    capeUpload.accept = 'image/png,image/jpeg,image/webp';
+    capeUpload.style.display = 'none';
+    capeUpload.id = 'capeFileInput';
+    document.body.appendChild(capeUpload);
+    capeUpload.addEventListener('change', async () => {
+      const f = capeUpload.files && capeUpload.files[0];
+      if (f) {
+        try {
+          const img = await loadImageBitmap(f);
+          capeSet(ed.skin, capeFromImage(img), f.name.replace(/\.[a-z0-9]+$/i, '').slice(0, 28));
+          renderCapeControls(ed.skin);
+        } catch (err) { toast('No se pudo leer el PNG: ' + err.message, 'error'); }
+      }
+      capeUpload.value = '';
+    });
+    if ($('#capeUploadBtn')) $('#capeUploadBtn').addEventListener('click', () => capeUpload.click());
+    if ($('#capeSearchBtn')) {
+      $('#capeSearchBtn').addEventListener('click', () => {
+        const q = ($('#capeQuery').value || '').trim() || 'minecraft cape';
+        capeBuscar(ed.skin, q);
+      });
+      $('#capeQuery').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); const q = e.target.value.trim() || 'minecraft cape'; capeBuscar(ed.skin, q); }
+      });
+    }
+    if ($('#capeGoogleBtn')) {
+      $('#capeGoogleBtn').addEventListener('click', () => {
+        const q = ($('#capeQuery').value || '').trim() || 'minecraft cape png';
+        window.open('https://www.google.com/search?tbm=isch&q=' + encodeURIComponent(q + ' transparente'), '_blank', 'noopener');
+      });
+    }
+    if ($('#capeClearBtn')) {
+      $('#capeClearBtn').addEventListener('click', () => {
+        ed.skin.cape = null;
+        const sum = $('#capeSummary');
+        if (sum) sum.textContent = 'Capa de la espalda (cape)';
+        renderCapeControls(ed.skin);
+        if (typeof repintar3D === 'function' && repintar3D) repintar3D();
+        toast('Capa quitada', 'info');
+      });
+    }
+    if ($('#capeBakeBtn')) $('#capeBakeBtn').addEventListener('click', () => capeBake(ed.skin));
+    if ($('#capeDownloadBtn')) {
+      $('#capeDownloadBtn').addEventListener('click', () => {
+        if (!ed.skin.cape) { toast('Primero elige o sube una capa', 'warn'); return; }
+        const c = ed.skin.cape.canvas;
+        c.toBlob((blob) => {
+          if (!blob) return;
+          blob.arrayBuffer().then((buf) => download(new Uint8Array(buf), safeFileName(ed.skin.name || 'skin') + '-capa.png'));
+        }, 'image/png');
+      });
+    }
+
     $('#edDownload').addEventListener('click', async () => {
       const bytes = await canvasToPngBytes(edFlatten());
       download(bytes, safeFileName(ed.skin.name || 'skin') + '.png');
@@ -1909,7 +2379,7 @@
     canvas._lce3d = null;
     if (!boxes.length) return;
 
-    const yaw = Math.PI - 0.6, pitch = 0.34;   // de frente: se ve la cara y el lado derecho
+    const yaw = (opts.yaw == null ? Math.PI - 0.6 : opts.yaw), pitch = 0.34;   // de frente: se ve la cara y el lado derecho
     const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
     const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
     const cx = 8, cy = 16;
@@ -2008,6 +2478,23 @@
 
       const faces = [];
 
+      // --- capa de la espalda (cape): un plano detrás del cuerpo ---
+      if (opts.capa && skin.cape) {
+        const cy = 24, anchoCapa = 10, altoCapa = 16, zCapa = 2.35;
+        const cuadro = [
+          [-anchoCapa / 2, cy, zCapa],
+          [anchoCapa / 2, cy, zCapa],
+          [anchoCapa / 2, cy - altoCapa, zCapa + 0.6],
+          [-anchoCapa / 2, cy - altoCapa, zCapa + 0.6]
+        ].map((q) => project(q[0], q[1], q[2]));
+        faces.push({
+          cape: true,
+          pts: cuadro,
+          depth: cuadro.reduce((a, q) => a + q.depth, 0) / 4 - 0.5,
+          stroke: 'rgba(6,10,18,0.45)'
+        });
+      }
+
       // --- skin: base y capas por separado ---
       const dibujadas = { base: 0, capas: 0, armadura: 0 };
       boxes.forEach((box) => {
@@ -2081,6 +2568,23 @@
           ctx.fillStyle = f.fill;
           ctx.fill();
           if (f.stroke) { ctx.strokeStyle = f.stroke; ctx.lineWidth = 1; ctx.stroke(); }
+          return;
+        }
+        if (f.cape) {
+          const p0 = f.pts[0], p1 = f.pts[1], p3 = f.pts[3];
+          ctx.save();
+          ctx.beginPath();
+          f.pts.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)));
+          ctx.closePath();
+          ctx.clip();
+          ctx.imageSmoothingEnabled = false;
+          ctx.transform((p1.x - p0.x) / 10, (p1.y - p0.y) / 10, (p3.x - p0.x) / 16, (p3.y - p0.y) / 16, p0.x, p0.y);
+          // cara trasera de la capa (12,1 · 10×16) que es la que se ve por fuera
+          ctx.drawImage(skin.cape.canvas, 12, 1, 10, 16, 0, 0, 10, 16);
+          ctx.restore();
+          ctx.strokeStyle = f.stroke;
+          ctx.lineWidth = 1;
+          ctx.stroke();
           return;
         }
         if (!pintarCara(f.pts, f.tex[0], f.tex[1], f.tex[2], f.tex[3], f.shade)) return;
