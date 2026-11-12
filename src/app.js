@@ -1724,7 +1724,7 @@
   /** busca en Openverse (fotos/arte con licencia) */
   async function buscarOpenverse(q) {
     const ctl = new AbortController();
-    const t = setTimeout(() => ctl.abort(), 12000);
+    const t = setTimeout(() => ctl.abort(), 7000);
     try {
       const res = await fetch('https://api.openverse.org/v1/images/?q=' + encodeURIComponent(q) + '&page_size=12',
         { headers: { Accept: 'application/json' }, signal: ctl.signal });
@@ -1741,7 +1741,7 @@
   /** busca en Wikimedia Commons (miniaturas con CORS permitido) */
   async function buscarCommons(q) {
     const ctl = new AbortController();
-    const t = setTimeout(() => ctl.abort(), 12000);
+    const t = setTimeout(() => ctl.abort(), 7000);
     try {
       const url = 'https://commons.wikimedia.org/w/api.php?action=query&generator=search' +
         '&gsrsearch=' + encodeURIComponent(q) + '&gsrnamespace=6&gsrlimit=8' +
@@ -1770,47 +1770,58 @@
         'en <b>isacrack.github.io/skinforge</b> funciona. Aquí usa las capas de arriba o «Subir PNG».</span>';
       return;
     }
-    const [ov, cm] = await Promise.all([buscarOpenverse(q), buscarCommons(q)]);
-    const items = ov.concat(cm).slice(0, 18);
-    if (!items.length) {
-      box.innerHTML = '<span class="muted">Sin resultados. Prueba «minecraft cape», «cape png», «ala»…</span>';
-      return;
+
+    let puestas = 0;
+    const pinta = (lista) => {
+      if (!lista.length) return;
+      if (!puestas) box.innerHTML = '';
+      lista.forEach((it) => {
+        puestas++;
+        botonResultado(box, skin, it);
+      });
+    };
+
+    // las dos fuentes a la vez y se van pintando según llegan
+    const fuentes = [buscarCommons(q), buscarOpenverse(q)];
+    await Promise.all(fuentes.map((f) => f.then(pinta).catch(() => {})));
+    if (!puestas) {
+      box.innerHTML = '<span class="muted">Sin resultados. Prueba «minecraft cape», «cape png», «ala», «bandera»…</span>';
     }
-    box.innerHTML = '';
-    items.forEach((it) => {
-      const b = document.createElement('button');
-      b.className = 'cape-res';
-      b.title = it.titulo;
-      const im = document.createElement('img');
-      im.alt = '';
-      im.loading = 'lazy';
-      im.src = it.miniatura;
-      im.addEventListener('error', () => {
-        if (im.dataset.ya === '1') { b.style.display = 'none'; return; }
-        im.dataset.ya = '1';
-        im.src = it.origen;   // si la miniatura falla, la original
-      });
-      b.appendChild(im);
-      b.addEventListener('click', async () => {
-        b.classList.add('busy');
-        try {
-          const img = await new Promise((res2, rej) => {
-            const i = new Image();
-            i.crossOrigin = 'anonymous';
-            i.onload = () => res2(i);
-            i.onerror = () => rej(new Error('bloqueada'));
-            i.src = it.origen;
-          });
-          capeSet(skin, capeFromImage(img), (it.titulo || 'capa').slice(0, 28));
-          renderCapeControls(skin);
-        } catch (err) {
-          toast('Esa imagen no deja usarse (su servidor bloquea la descarga). Abre ' +
-            '<b>Google Imágenes</b>, guarda el PNG y súbelo con «Subir PNG».', 'warn');
-        }
-        b.classList.remove('busy');
-      });
-      box.appendChild(b);
+  }
+
+  function botonResultado(box, skin, it) {
+    const b = document.createElement('button');
+    b.className = 'cape-res';
+    b.title = it.titulo;
+    const im = document.createElement('img');
+    im.alt = '';
+    im.loading = 'lazy';
+    im.src = it.miniatura;
+    im.addEventListener('error', () => {
+      if (im.dataset.ya === '1') { b.style.display = 'none'; return; }
+      im.dataset.ya = '1';
+      im.src = it.origen;   // si la miniatura falla, la original
     });
+    b.appendChild(im);
+    b.addEventListener('click', async () => {
+      b.classList.add('busy');
+      try {
+        const img = await new Promise((res2, rej) => {
+          const i = new Image();
+          i.crossOrigin = 'anonymous';
+          i.onload = () => res2(i);
+          i.onerror = () => rej(new Error('bloqueada'));
+          i.src = it.origen;
+        });
+        capeSet(skin, capeFromImage(img), (it.titulo || 'capa').slice(0, 28));
+        renderCapeControls(skin);
+      } catch (err) {
+        toast('Esa imagen no deja usarse (su servidor bloquea la descarga). Abre ' +
+          '<b>Google Imágenes</b>, guarda el PNG y súbelo con «Subir PNG».', 'warn');
+      }
+      b.classList.remove('busy');
+    });
+    box.appendChild(b);
   }
 
   /** pinta la capa en la espalda de la textura (para que se vea en el juego) */
