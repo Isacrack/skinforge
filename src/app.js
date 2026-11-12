@@ -2459,7 +2459,7 @@
       ];
 
       /** pinta un trozo de textura deformado sobre un cuadrilátero en pantalla */
-      const pintarCara = (pts, sx, sy, sw, sh, shade) => {
+      const pintarCara = (pts, sx, sy, sw, sh, shade, fuente) => {
         if (sw <= 0 || sh <= 0 || !pixels) return false;
         const p0 = pts[0], p1 = pts[1], p3 = pts[3];
         ctx.save();
@@ -2469,7 +2469,7 @@
         ctx.clip();
         ctx.transform((p1.x - p0.x) / sw, (p1.y - p0.y) / sw, (p3.x - p0.x) / sh, (p3.y - p0.y) / sh, p0.x, p0.y);
         ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(img, sx, sy, Math.max(0.01, sw), Math.max(0.01, sh), 0, 0, sw, sh);
+        ctx.drawImage(fuente || img, sx, sy, Math.max(0.01, sw), Math.max(0.01, sh), 0, 0, sw, sh);
         if (shade < 1) {
           ctx.fillStyle = 'rgba(0,0,0,' + (1 - shade).toFixed(2) + ')';
           ctx.fillRect(0, 0, sw, sh);
@@ -2490,20 +2490,17 @@
       const faces = [];
 
       // --- capa de la espalda (cape): un plano detrás del cuerpo ---
+      let capaCerca = false;
       if (opts.capa && skin.cape) {
-        const cy = 24, anchoCapa = 10, altoCapa = 16, zCapa = 2.35;
-        const cuadro = [
-          [-anchoCapa / 2, cy, zCapa],
-          [anchoCapa / 2, cy, zCapa],
-          [anchoCapa / 2, cy - altoCapa, zCapa + 0.6],
-          [-anchoCapa / 2, cy - altoCapa, zCapa + 0.6]
-        ].map((q) => project(q[0], q[1], q[2]));
-        faces.push({
-          cape: true,
-          pts: cuadro,
-          depth: cuadro.reduce((a, q) => a + q.depth, 0) / 4 - 0.5,
-          stroke: 'rgba(6,10,18,0.45)'
-        });
+        const ANCHO = 10, ALTO = 16, Y0 = 24, Z0 = 2.35, INCLINA = 0.6;
+        const zDe = (y) => Z0 + (Y0 - y) * (INCLINA / ALTO);
+        const pts = [
+          project(-ANCHO / 2, Y0, zDe(Y0)), project(ANCHO / 2, Y0, zDe(Y0)),
+          project(ANCHO / 2, Y0 - ALTO, zDe(Y0 - ALTO)), project(-ANCHO / 2, Y0 - ALTO, zDe(Y0 - ALTO))
+        ];
+        // ¿la espalda mira a la cámara? entonces la capa se pinta encima de todo
+        capaCerca = project(0, 16, Z0).depth > project(0, 16, -2).depth;
+        faces.push({ cape: true, pts: pts, tex: [12, 1, 10, 16], depth: 0, stroke: 'rgba(6,10,18,0.35)' });
       }
 
       // --- skin: base y capas por separado ---
@@ -2571,6 +2568,12 @@
       });
 
       faces.sort((a, b) => a.depth - b.depth);
+      if (faces.some((f) => f.cape)) {
+        const tela = faces.filter((f) => f.cape);
+        const resto = faces.filter((f) => !f.cape);
+        faces.length = 0;
+        (capaCerca ? resto.concat(tela) : tela.concat(resto)).forEach((f) => faces.push(f));
+      }
       faces.forEach((f) => {
         if (f.solid) {
           ctx.beginPath();
@@ -2582,20 +2585,15 @@
           return;
         }
         if (f.cape) {
-          const p0 = f.pts[0], p1 = f.pts[1], p3 = f.pts[3];
-          ctx.save();
-          ctx.beginPath();
-          f.pts.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)));
-          ctx.closePath();
-          ctx.clip();
-          ctx.imageSmoothingEnabled = false;
-          ctx.transform((p1.x - p0.x) / 10, (p1.y - p0.y) / 10, (p3.x - p0.x) / 16, (p3.y - p0.y) / 16, p0.x, p0.y);
-          // cara trasera de la capa (12,1 · 10×16) que es la que se ve por fuera
-          ctx.drawImage(skin.cape.canvas, 12, 1, 10, 16, 0, 0, 10, 16);
-          ctx.restore();
-          ctx.strokeStyle = f.stroke;
-          ctx.lineWidth = 1;
-          ctx.stroke();
+          pintarCara(f.pts, f.tex[0], f.tex[1], f.tex[2], f.tex[3], 0.92, skin.cape.canvas);   // 0.92 = un pelín de sombra, como la espalda
+          if (f.stroke) {
+            ctx.beginPath();
+            f.pts.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)));
+            ctx.closePath();
+            ctx.strokeStyle = f.stroke;
+            ctx.lineWidth = 1;
+            ctx.stroke();
+          }
           return;
         }
         if (!pintarCara(f.pts, f.tex[0], f.tex[1], f.tex[2], f.tex[3], f.shade)) return;

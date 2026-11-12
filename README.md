@@ -473,3 +473,10 @@ La ingeniería inversa del contenedor PCK está documentada por
 colaboradores, GPL-3.0). Esta página es una implementación independiente del mismo formato, sin código copiado.
 
 No está afiliada a Mojang, Microsoft ni 4J Studios. «Minecraft» es una marca de Mojang AB.
+
+### Trucos de la capa en la vista 3D
+
+- **Girar** mueve el muñeco de 0° a 360°: hacia el final del recorrido se ve la espalda y la capa entera.
+- La casilla **Capa** la oculta sin quitarla (útil para comparar).
+- La capa se dibuja como una tela aparte detrás del cuerpo, así que asoma un píxel por los lados aunque
+  mires de frente (igual que en el juego) y se pinta correctamente cuando la miras de espaldas.
