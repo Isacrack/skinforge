@@ -455,6 +455,7 @@
           </div>
         </div>
         <div class="skin-actions">
+          <button class="icon-btn edit-btn" title="Editar píxeles y capas" aria-label="Editar"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L20 8l-4-4L4 16v4z"/></svg></button>
           <button class="icon-btn doll-btn" title="Ver modelo">3D</button>
           <button class="icon-btn up" title="Subir">↑</button>
           <button class="icon-btn down" title="Bajar">↓</button>
@@ -497,6 +498,7 @@
         render();
       });
       $('.doll-btn', card).addEventListener('click', () => openDoll(skin));
+      $('.edit-btn', card).addEventListener('click', () => edOpen(skin));
 
       list.appendChild(card);
     });
@@ -1431,6 +1433,404 @@
     toast('Modelo <b>' + escapeHtml(file.name) + '</b>: ' + res.boxes.length + ' cajas · XMLVERSION ' + res.xmlVersion, 'ok');
     if (res.warnings.length) toast(res.warnings.length + ' aviso(s) del modelo: <span class="muted">' + escapeHtml(res.warnings[0].text) + '</span>', 'warn');
     return { skin, parsed, res };
+  }
+
+  /* --------------------- editor de skin: píxeles y capas ----------------- */
+  /**
+   * Editor por skin pensado también para el móvil: pinta píxeles con el dedo,
+   * sube capas PNG (sombrero, chaqueta…) y aplánalas en la textura.
+   * Las capas viven en skin.layers: [{id, name, canvas, visible, opacity}].
+   */
+  const ed = {
+    skin: null, zoom: 8, tool: 'pencil', color: '#00afaf',
+    sel: 0, undo: [], snapshot: null, bound: false,
+    drawing: false, last: null, pointers: new Map(), pinch: null, swatches: []
+  };
+
+  const ED_ZOOMS = [2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24];
+
+  function edLayerCanvas(layer) { return layer.canvas; }
+
+  function edClone(layers) {
+    return layers.map((l) => {
+      const c = document.createElement('canvas');
+      c.width = l.canvas.width; c.height = l.canvas.height;
+      c.getContext('2d').drawImage(l.canvas, 0, 0);
+      return { id: l.id, name: l.name, canvas: c, visible: l.visible, opacity: l.opacity, kind: l.kind };
+    });
+  }
+
+  function edFlatten() {
+    const w = ed.skin.w, h = ed.skin.h;
+    const out = document.createElement('canvas');
+    out.width = w; out.height = h;
+    const ctx = out.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ed.layers.forEach((l) => {
+      if (!l.visible || !l.opacity) return;
+      ctx.globalAlpha = l.opacity;
+      ctx.drawImage(l.canvas, 0, 0);
+    });
+    ctx.globalAlpha = 1;
+    return out;
+  }
+
+  function edNewLayer(name, kind) {
+    const c = document.createElement('canvas');
+    c.width = ed.skin.w; c.height = ed.skin.h;
+    return { id: 'L' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+      name: name, canvas: c, visible: true, opacity: 1, kind: kind || 'empty' };
+  }
+
+  async function edOpen(skin) {
+    ed.skin = skin;
+    ed.zoom = 8; ed.tool = 'pencil'; ed.sel = 0; ed.undo = []; ed.drawing = false;
+    ed.pointers.clear(); ed.pinch = null;
+    $('#edTitle').textContent = 'Editar · ' + (skin.name || 'skin');
+    $$('#edTools .tool').forEach((b) => b.classList.toggle('sel', b.dataset.tool === 'pencil'));
+
+    if (!skin.layers || !skin.layers.length) {
+      const base = document.createElement('canvas');
+      base.width = skin.w; base.height = skin.h;
+      const bctx = base.getContext('2d');
+      bctx.imageSmoothingEnabled = false;
+      try {
+        const img = await new Promise((res, rej) => {
+          const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = skin.thumbUrl;
+        });
+        bctx.drawImage(img, 0, 0, skin.w, skin.h);
+      } catch (e) { /* skin vacía */ }
+      skin.layers = [{ id: 'base', name: 'Skin (base)', canvas: base, visible: true, opacity: 1, kind: 'base' }];
+    }
+    ed.layers = skin.layers;
+    ed.sel = ed.layers.length - 1;
+    ed.snapshot = edClone(ed.layers);
+    $('#editOverlay').classList.add('show');
+    edBind();
+    ed.zoom = edFit();
+    edRender();
+    requestAnimationFrame(() => { ed.zoom = edFit(); edRender(); });
+  }
+
+  /** el mayor zoom que cabe entero en el lienzo visible (sin deformar la skin) */
+  function edFit() {
+    const stage = $('#edStage');
+    const skin = ed.skin;
+    if (!stage || !skin) return ed.zoom;
+    const avail = Math.min(stage.clientWidth - 16, stage.clientHeight - 16);
+    if (!(avail > 0)) return ed.zoom;
+    let best = ED_ZOOMS[0];
+    ED_ZOOMS.forEach((z) => { if (z * skin.w <= avail) best = z; });
+    return best;
+  }
+
+  function edCurrent() { return ed.layers[ed.sel] || ed.layers[0]; }
+
+  function edRender() {
+    const skin = ed.skin;
+    if (!skin) return;
+    const c = $('#edCanvas');
+    const zoom = ed.zoom;
+    c.width = skin.w * zoom; c.height = skin.h * zoom;
+    c.style.width = (skin.w * zoom) + 'px';
+    c.style.height = (skin.h * zoom) + 'px';
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, c.width, c.height);
+    ctx.imageSmoothingEnabled = false;
+    ed.layers.forEach((l) => {
+      if (!l.visible || !l.opacity) return;
+      ctx.globalAlpha = l.opacity;
+      ctx.drawImage(l.canvas, 0, 0, c.width, c.height);
+    });
+    ctx.globalAlpha = 1;
+    if ($('#edGridChk').checked && zoom >= 4) {
+      ctx.lineWidth = 1;
+      for (let x = 1; x < skin.w; x++) {
+        ctx.strokeStyle = x % 8 === 0 ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.09)';
+        ctx.beginPath(); ctx.moveTo(x * zoom + 0.5, 0); ctx.lineTo(x * zoom + 0.5, c.height); ctx.stroke();
+      }
+      for (let y = 1; y < skin.h; y++) {
+        ctx.strokeStyle = y % 8 === 0 ? 'rgba(255,255,255,0.28)' : 'rgba(255,255,255,0.09)';
+        ctx.beginPath(); ctx.moveTo(0, y * zoom + 0.5); ctx.lineTo(c.width, y * zoom + 0.5); ctx.stroke();
+      }
+    }
+    $('#edZoomVal').textContent = zoom + '×';
+    edRenderLayers();
+  }
+
+  function edRenderLayers() {
+    const box = $('#edLayerList');
+    box.innerHTML = '';
+    ed.layers.forEach((l, i) => {
+      const row = document.createElement('div');
+      row.className = 'ed-layer' + (i === ed.sel ? ' sel' : '');
+      row.dataset.i = String(i);
+      row.innerHTML = `
+        <button class="eye${l.visible ? '' : ' off'}" data-act="eye" title="Mostrar/ocultar">${l.visible ? '●' : '○'}</button>
+        <span class="ln"><b>${escapeHtml(l.name)}</b><span>${l.kind === 'base' ? 'base' : (l.kind === 'png' ? 'capa PNG' : 'capa vacía')} · ${Math.round(l.opacity * 100)}%</span></span>
+        <input type="range" min="0" max="100" value="${Math.round(l.opacity * 100)}" data-act="op" title="Opacidad">
+        <button class="icon-btn" data-act="up" title="Subir capa">▲</button>
+        <button class="icon-btn del" data-act="del" title="Quitar capa">✕</button>`;
+      box.appendChild(row);
+    });
+  }
+
+  function edPoint(ev) {
+    const c = $('#edCanvas');
+    const r = c.getBoundingClientRect();
+    const x = Math.floor((ev.clientX - r.left) / r.width * ed.skin.w);
+    const y = Math.floor((ev.clientY - r.top) / r.height * ed.skin.h);
+    if (x < 0 || y < 0 || x >= ed.skin.w || y >= ed.skin.h) return null;
+    return { x: x, y: y };
+  }
+
+  function edPushUndo() {
+    const l = edCurrent();
+    if (!l) return;
+    const ctx = l.canvas.getContext('2d');
+    ed.undo.push({ id: l.id, data: ctx.getImageData(0, 0, l.canvas.width, l.canvas.height) });
+    if (ed.undo.length > 40) ed.undo.shift();
+  }
+
+  function edDot(x, y) {
+    const l = edCurrent();
+    if (!l || !l.visible) return;
+    const ctx = l.canvas.getContext('2d');
+    if (ed.tool === 'eraser') ctx.clearRect(x, y, 1, 1);
+    else { ctx.fillStyle = ed.color; ctx.fillRect(x, y, 1, 1); }
+    edRender();
+  }
+
+  function edLine(a, b) {
+    let x0 = a.x, y0 = a.y;
+    const dx = Math.abs(b.x - x0), dy = Math.abs(b.y - y0);
+    const sx = x0 < b.x ? 1 : -1, sy = y0 < b.y ? 1 : -1;
+    let err = dx - dy;
+    for (;;) {
+      edDot(x0, y0);
+      if (x0 === b.x && y0 === b.y) break;
+      const e2 = 2 * err;
+      if (e2 > -dy) { err -= dy; x0 += sx; }
+      if (e2 < dx) { err += dx; y0 += sy; }
+    }
+  }
+
+  function edPickColor(p) {
+    const ctx = edFlatten().getContext('2d');
+    const d = ctx.getImageData(p.x, p.y, 1, 1).data;
+    if (d[3] < 8) { toast('Ese píxel está vacío', 'warn'); return; }
+    ed.color = '#' + [d[0], d[1], d[2]].map((v) => v.toString(16).padStart(2, '0')).join('');
+    $('#edColor').value = ed.color;
+  }
+
+  function edAddSwatch(color) {
+    if (ed.swatches[0] === color) return;
+    ed.swatches = [color].concat(ed.swatches.filter((c) => c !== color)).slice(0, 10);
+    const box = $('#edSwatches');
+    box.innerHTML = '';
+    ed.swatches.forEach((c) => {
+      const b = document.createElement('button');
+      b.style.background = c;
+      b.title = c;
+      b.addEventListener('click', () => { ed.color = c; $('#edColor').value = c; });
+      box.appendChild(b);
+    });
+  }
+
+  function edZoomStep(dir) {
+    const i = ED_ZOOMS.indexOf(ed.zoom);
+    const next = ED_ZOOMS[Math.max(0, Math.min(ED_ZOOMS.length - 1, (i < 0 ? 3 : i) + dir))];
+    ed.zoom = next;
+    edRender();
+  }
+
+  async function edAddPngLayers(files) {
+    let added = 0;
+    for (const file of Array.from(files || [])) {
+      if (!/^image\//.test(file.type) && !/\.(png|jpe?g|webp)$/i.test(file.name)) continue;
+      try {
+        const img = await loadImageBitmap(file);
+        const layer = edNewLayer(file.name.replace(/\.[a-z0-9]+$/i, ''), 'png');
+        const ctx = layer.canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(img, 0, 0, ed.skin.w, ed.skin.h);
+        ed.layers.push(layer);
+        ed.sel = ed.layers.length - 1;
+        added++;
+      } catch (err) {
+        toast('<b>' + escapeHtml(file.name) + '</b>: ' + err.message, 'error');
+      }
+    }
+    if (added) {
+      edRender();
+      toast('Añadida' + (added > 1 ? 's ' + added + ' capas' : ' 1 capa') + ' encima. Toca el ojo para ver el antes/después.', 'ok');
+    }
+  }
+
+  function edBind() {
+    if (ed.bound) return;
+    ed.bound = true;
+    const c = $('#edCanvas');
+    const stage = $('#edStage');
+
+    $('#edZoomIn').addEventListener('click', () => edZoomStep(1));
+    $('#edZoomOut').addEventListener('click', () => edZoomStep(-1));
+    $('#edGridChk').addEventListener('change', () => edRender());
+    $$('#edTools .tool').forEach((b) => b.addEventListener('click', () => {
+      ed.tool = b.dataset.tool;
+      $$('#edTools .tool').forEach((x) => x.classList.toggle('sel', x === b));
+    }));
+    $('#edColor').addEventListener('input', (e) => { ed.color = e.target.value; });
+    $('#edColor').addEventListener('change', (e) => edAddSwatch(e.target.value));
+    $('#edUndo').addEventListener('click', () => {
+      const snap = ed.undo.pop();
+      if (!snap) { toast('Nada que deshacer', 'info'); return; }
+      const l = ed.layers.find((x) => x.id === snap.id);
+      if (l) l.canvas.getContext('2d').putImageData(snap.data, 0, 0);
+      edRender();
+    });
+
+    // pintar con ratón o con el dedo
+    c.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      ed.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (ed.pointers.size === 2) {                     // pellizco para el zoom
+        const pts = [...ed.pointers.values()];
+        ed.pinch = { dist: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y), zoom: ed.zoom };
+        ed.drawing = false;
+        return;
+      }
+      const p = edPoint(e);
+      if (!p) return;
+      if (ed.tool === 'picker') { edPickColor(p); return; }
+      c.setPointerCapture(e.pointerId);
+      edPushUndo();
+      ed.drawing = true;
+      ed.last = p;
+      edDot(p.x, p.y);
+      if (ed.tool === 'pencil') edAddSwatch(ed.color);
+    });
+    c.addEventListener('pointermove', (e) => {
+      if (ed.pointers.has(e.pointerId)) ed.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (ed.pinch && ed.pointers.size === 2) {
+        const pts = [...ed.pointers.values()];
+        const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        const z = Math.round(ed.pinch.zoom * (d / Math.max(1, ed.pinch.dist)));
+        const snap = ED_ZOOMS.reduce((best, v) => (Math.abs(v - z) < Math.abs(best - z) ? v : best), ED_ZOOMS[0]);
+        if (snap !== ed.zoom) { ed.zoom = snap; edRender(); }
+        return;
+      }
+      if (!ed.drawing) return;
+      const p = edPoint(e);
+      if (!p) return;
+      edLine(ed.last, p);
+      ed.last = p;
+    });
+    const end = (e) => {
+      ed.pointers.delete(e.pointerId);
+      if (ed.pointers.size < 2) ed.pinch = null;
+      ed.drawing = false;
+    };
+    c.addEventListener('pointerup', end);
+    c.addEventListener('pointercancel', end);
+    c.addEventListener('pointerleave', (e) => { if (e.buttons === 0) end(e); });
+
+    // rueda del ratón para acercar
+    stage.addEventListener('wheel', (e) => {
+      if (!e.ctrlKey && !e.shiftKey) return;
+      e.preventDefault();
+      edZoomStep(e.deltaY < 0 ? 1 : -1);
+    }, { passive: false });
+
+    // lista de capas
+    $('#edLayerList').addEventListener('click', (e) => {
+      const row = e.target.closest('.ed-layer');
+      if (!row) return;
+      const i = Number(row.dataset.i);
+      const act = e.target.closest('[data-act]');
+      const what = act ? act.dataset.act : null;
+      if (what === 'eye') { ed.layers[i].visible = !ed.layers[i].visible; edRender(); return; }
+      if (what === 'del') {
+        if (ed.layers.length === 1) { toast('Tiene que quedar al menos una capa', 'warn'); return; }
+        ed.layers.splice(i, 1);
+        ed.sel = Math.min(ed.sel, ed.layers.length - 1);
+        edRender();
+        return;
+      }
+      if (what === 'up') {
+        if (i === 0) return;
+        const [l] = ed.layers.splice(i, 1);
+        ed.layers.splice(i - 1, 0, l);
+        ed.sel = i - 1;
+        edRender();
+        return;
+      }
+      ed.sel = i;
+      edRender();
+    });
+    $('#edLayerList').addEventListener('input', (e) => {
+      const row = e.target.closest('.ed-layer');
+      if (!row || !e.target.dataset.act === 'op') return;
+      if (e.target.dataset.act !== 'op') return;
+      const i = Number(row.dataset.i);
+      ed.layers[i].opacity = Number(e.target.value) / 100;
+      edRender();
+    });
+
+    // subir capas
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/png,image/jpeg,image/webp';
+    fileInput.multiple = true;
+    fileInput.style.display = 'none';
+    fileInput.id = 'edFileInput';
+    document.body.appendChild(fileInput);
+    fileInput.addEventListener('change', async () => {
+      await edAddPngLayers(fileInput.files);
+      fileInput.value = '';
+    });
+    $('#edAddLayer').addEventListener('click', () => fileInput.click());
+    $('#edAddEmpty').addEventListener('click', () => {
+      ed.layers.push(edNewLayer('Capa ' + (ed.layers.length + 1), 'empty'));
+      ed.sel = ed.layers.length - 1;
+      edRender();
+    });
+    $('#edFlatten').addEventListener('click', () => {
+      const flat = edFlatten();
+      const base = ed.layers.find((l) => l.kind === 'base') || ed.layers[0];
+      base.canvas.getContext('2d').clearRect(0, 0, base.canvas.width, base.canvas.height);
+      base.canvas.getContext('2d').drawImage(flat, 0, 0);
+      base.visible = true; base.opacity = 1;
+      ed.layers = [base];
+      ed.sel = 0;
+      edRender();
+      toast('Capas aplanadas sobre la base', 'ok');
+    });
+
+    $('#edDownload').addEventListener('click', async () => {
+      const bytes = await canvasToPngBytes(edFlatten());
+      download(bytes, safeFileName(ed.skin.name || 'skin') + '.png');
+    });
+    $('#edCancel').addEventListener('click', () => {
+      ed.skin.layers = ed.snapshot;
+      $('#editOverlay').classList.remove('show');
+      render();
+    });
+    $('#edSave').addEventListener('click', async () => {
+      const flat = edFlatten();
+      const bytes = await canvasToPngBytes(flat);
+      const skin = ed.skin;
+      skin.png = bytes;
+      skin.thumbUrl = canvasToUrl(flat);
+      skin.warn = bytes.length > MAX_SAFE_SKIN_BYTES ? 'PNG grande (' + humanSize(bytes.length) + '): puede fallar en consola' : '';
+      skin.layers = ed.layers;
+      skin.edited = true;
+      $('#editOverlay').classList.remove('show');
+      render();
+      toast('Skin <b>' + escapeHtml(skin.name) + '</b> guardada (' + humanSize(bytes.length) + ')', 'ok');
+    });
+
+    if (window.matchMedia && window.matchMedia('(max-width: 700px)').matches) ed.zoom = 6;
   }
 
   /* ------------------------- vista 3D (isométrica) ----------------------- */

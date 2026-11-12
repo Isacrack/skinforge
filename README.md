@@ -227,6 +227,46 @@ descargar plantilla → abrir en Blockbench → mover/grandes cajas → guardar 
 3. **File → Save as** → `.bbmodel`, y suéltalo otra vez en la herramienta. Si alguna caja se pasa de la
    medida estándar, la herramienta avisa y puedes ocultarla con la armadura desde el editor.
 
+## Editor por skin (píxeles y capas), también en el móvil
+
+Cada tarjeta tiene un botón **✏️** que abre un editor de la textura **de esa skin** (las demás no se tocan).
+Está pensado para usarse con el dedo: en pantalla pequeña ocupa toda la pantalla y los botones pasan de 44 px.
+
+![Editor de skin con una capa de sombrero subida](capturas/editor.png)
+
+**Herramientas**
+
+| Botón | Qué hace |
+|---|---|
+| **Lápiz** | Pinta el píxel con el color elegido (se arrastra para trazar líneas, también con el dedo) |
+| **Borrar** | Deja el píxel transparente |
+| **Cuentagotas** | Coge el color de un píxel de la skin |
+| **Color** | Selector de color, más las últimas muestras usadas |
+| **Deshacer** | Hasta 40 pasos, por capa |
+| **− / + / Rejilla** | Zoom (2× a 24×, o **pellizco** en el móvil) y cuadrícula de píxeles y de 8 en 8 |
+
+**Capas** (lo de «subirle capas a la skin»)
+
+- **+ Subir capa (PNG)**: suelta una PNG (sombrero, chaqueta, gafas, logo…) y se pone **encima** de la skin
+  respetando su transparencia. Puedes subir varias a la vez.
+- **+ Capa vacía**: una capa transparente para pintar encima sin tocar la base.
+- **Ojo (●/○)**: activa o desactiva la capa para comparar el antes/después.
+- **Barra de opacidad**: de 0 a 100 % por capa (por ejemplo, una capa al 40 % para un sombreado).
+- **▲ / ✕**: reordenar o quitar la capa.
+- **Aplanar**: funde todas las capas visibles en la base y deja solo esa.
+
+Toca una fila de capa para **pintar en ella**: el lápiz escribe siempre en la capa seleccionada.
+
+**Guardar**: *Guardar en la skin* recompone el PNG de la skin (miniatura, `.pck` y vista 3D incluidos);
+*Descargar PNG* saca el resultado sin tocar la skin, y *Cancelar* descarta todo.
+
+Hay una capa de prueba lista en [`ejemplos/capa-sombrero.png`](ejemplos/capa-sombrero.png): súbela sobre
+cualquier skin y mira la vista 3D.
+
+![La skin con la capa puesta, en 3D](capturas/capa-3d.png)
+
+![El mismo editor en un móvil](capturas/editor-movil.png)
+
 ### Mover la armadura en vez de ocultarla (`OFFSET`)
 
 Si la armadura no sobra sino que **se hunde** dentro de tu geometría, el parámetro `OFFSET` (TU33) la

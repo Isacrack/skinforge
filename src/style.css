@@ -315,6 +315,7 @@ body.busy .dropzone { opacity: 0.7; }
   #installCard { order: 4; }
   #tipsCard { order: 5; }
   #whatCard { order: 6; }
+  #armorCard { order: 7; }
   .hero-copy { max-width: none; }
 }
 @media (max-width: 560px) {
@@ -465,3 +466,101 @@ body.busy .dropzone { opacity: 0.7; }
 .doll-tools { display: flex; align-items: center; gap: 10px; justify-content: center; flex-wrap: wrap; }
 .doll-tools .arm { font-size: 0.74rem; padding: 4px 8px; }
 .doll-tools .muted { font-size: 0.7rem; }
+
+/* ======================== EDITOR DE SKIN (píxeles) ======================== */
+#editOverlay .modal.editor-modal {
+  width: min(820px, 96vw); text-align: left; gap: 10px;
+  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  max-height: 94vh;
+}
+.ed-top { display: flex; align-items: center; gap: 10px; justify-content: space-between; flex-wrap: wrap; }
+.ed-top h4 { margin: 0; }
+.ed-zoom { display: flex; align-items: center; gap: 6px; }
+.ed-zoom .zval { font-family: var(--mono); font-size: 0.78rem; color: var(--muted); min-width: 34px; text-align: center; }
+.ed-stage {
+  display: grid; place-items: center; overflow: auto; padding: 8px;
+  background:
+    linear-gradient(45deg, rgba(255,255,255,0.04) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.04) 75%) 0 0 / 16px 16px,
+    linear-gradient(45deg, rgba(255,255,255,0.04) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.04) 75%) 8px 8px / 16px 16px,
+    rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--line); border-radius: 12px; min-height: 0;
+  height: clamp(180px, 42vh, 430px);
+  touch-action: none; overscroll-behavior: contain;
+}
+#edCanvas { image-rendering: pixelated; touch-action: none; cursor: crosshair; background: transparent;
+  border-radius: 4px; box-shadow: 0 0 0 1px rgba(255,255,255,0.08); }
+.ed-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.ed-tools .tool {
+  display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; font-size: 0.82rem;
+  border-radius: 10px; border: 1px solid var(--line); background: rgba(255,255,255,0.04); color: var(--muted);
+}
+.ed-tools .tool.sel { color: #08131f; background: linear-gradient(180deg, #7ee0f4, #45b6cf); border-color: transparent; font-weight: 700; }
+.ed-color { display: inline-flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 10px; padding: 5px 10px; background: rgba(255,255,255,0.04); }
+.ed-color input[type=color] { width: 44px; height: 34px; padding: 0; border: none; background: none; border-radius: 8px; }
+.ed-swatches { display: flex; gap: 6px; flex-wrap: wrap; }
+.ed-swatches button { width: 26px; height: 26px; border-radius: 7px; border: 1px solid rgba(255,255,255,0.25); padding: 0; }
+.ed-layers { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
+.ed-layers-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ed-layers-head b { font-size: 0.86rem; }
+.ed-layers-head .btn { padding: 6px 10px; font-size: 0.76rem; }
+.ed-layer-list { display: grid; gap: 6px; max-height: 24vh; overflow-y: auto; }
+.ed-layer {
+  display: grid; grid-template-columns: auto 1fr auto auto auto; gap: 8px; align-items: center;
+  background: rgba(255,255,255,0.03); border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px;
+}
+.ed-layer.sel { border-color: rgba(110, 231, 249, 0.6); background: rgba(110, 231, 249, 0.10); }
+.ed-layer .eye { width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--line);
+  background: rgba(255,255,255,0.05); color: var(--text); font-size: 0.95rem; }
+.ed-layer .eye.off { color: var(--muted); text-decoration: line-through; }
+.ed-layer .ln { display: grid; gap: 1px; min-width: 0; }
+.ed-layer .ln b { font-size: 0.8rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ed-layer .ln span { font-size: 0.68rem; color: var(--muted); }
+.ed-layer input[type=range] { width: 84px; accent-color: #6ee7f9; }
+.ed-layer .del { width: 34px; height: 34px; }
+.ed-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; border-top: 1px solid var(--line); padding-top: 10px; }
+.ed-actions .btn { padding: 10px 16px; }
+
+@media (max-width: 700px) {
+  #editOverlay { padding: 0; }
+  #editOverlay .modal.editor-modal {
+    width: 100%; max-width: 100%; height: 100dvh; max-height: 100dvh; border-radius: 0;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); gap: 8px;
+    grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  }
+  .ed-stage { height: auto; max-height: none; min-height: 0; }
+  .ed-tools { gap: 6px; }
+  .ed-tools .tool { flex: 1 1 auto; justify-content: center; min-height: 46px; font-size: 0.8rem; }
+  .ed-zoom .btn, .ed-layers-head .btn, .ed-actions .btn { min-height: 44px; }
+  .ed-actions { justify-content: stretch; }
+  .ed-actions .btn { flex: 1 1 40%; }
+  .ed-layer { grid-template-columns: auto 1fr auto auto; }
+  .ed-layer [data-act="up"] { display: none; }
+  .ed-layer input[type=range] { width: 64px; }
+  .ed-layer-list { max-height: 20vh; }
+  #skinsCard .skin-actions .icon-btn { min-width: 40px; min-height: 40px; }
+}
+
+.ed-zoom .ed-check {
+  display: inline-flex; align-items: center; gap: 6px; font-size: 0.76rem; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 9px; padding: 6px 9px; background: rgba(255,255,255,0.04);
+  min-height: 36px; cursor: pointer;
+}
+.ed-zoom .ed-check input { width: 16px; height: 16px; accent-color: #6ee7f9; margin: 0; }
+.ed-layer .eye { font-size: 1rem; line-height: 1; }
+.icon-btn.edit-btn svg { display: block; }
+@media (max-width: 700px) {
+  .ed-zoom .ed-check { min-height: 44px; }
+}
+
+/* el lienzo del editor no se deforma: si hace zoom, el marco scrollea */
+#editOverlay #edCanvas { max-width: none; height: auto; }
+
+/* en el móvil los avisos van abajo, para no tapar el lienzo del editor */
+@media (max-width: 700px) {
+  #toasts {
+    top: auto; bottom: calc(10px + env(safe-area-inset-bottom));
+    left: 10px; right: 10px; max-width: none; gap: 8px;
+  }
+  .toast { font-size: 0.8rem; padding: 9px 12px; }
+}

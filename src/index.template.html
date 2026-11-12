@@ -461,6 +461,46 @@
 
 <div id="toasts"></div>
 
+<div class="overlay" id="editOverlay">
+  <div class="modal editor-modal">
+    <div class="ed-top">
+      <h4 id="edTitle">Editar skin</h4>
+      <div class="ed-zoom">
+        <button class="btn sm ghost" id="edZoomOut" title="Alejar">−</button>
+        <span class="zval" id="edZoomVal">8×</span>
+        <button class="btn sm ghost" id="edZoomIn" title="Acercar">+</button>
+        <label class="ed-check" title="Cuadrícula de píxeles"><input type="checkbox" id="edGridChk" checked> Rejilla</label>
+      </div>
+    </div>
+    <div class="ed-stage" id="edStage">
+      <canvas id="edCanvas" width="64" height="64"></canvas>
+    </div>
+    <div class="ed-tools" id="edTools">
+      <button class="tool sel" data-tool="pencil">Lápiz</button>
+      <button class="tool" data-tool="eraser">Borrar</button>
+      <button class="tool" data-tool="picker">Cuentagotas</button>
+      <label class="ed-color">Color <input type="color" id="edColor" value="#00afaf"></label>
+      <button class="btn sm ghost" id="edUndo">↶ Deshacer</button>
+      <div class="ed-swatches" id="edSwatches"></div>
+    </div>
+    <div class="ed-layers">
+      <div class="ed-layers-head">
+        <b>Capas</b>
+        <button class="btn sm" id="edAddLayer">+ Subir capa (PNG)</button>
+        <button class="btn sm ghost" id="edAddEmpty">+ Capa vacía</button>
+        <button class="btn sm ghost" id="edFlatten">Aplanar</button>
+        <span class="muted">toca una capa para pintar en ella</span>
+      </div>
+      <div class="ed-layer-list" id="edLayerList"></div>
+    </div>
+    <div class="ed-actions">
+      <button class="btn ghost" id="edDownload">Descargar PNG</button>
+      <button class="btn ghost" id="edCancel">Cancelar</button>
+      <button class="btn" id="edSave">Guardar en la skin</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="dollOverlay">
   <div class="modal">
     <h4 id="dollName">Skin</h4>
