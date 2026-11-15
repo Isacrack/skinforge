@@ -773,6 +773,61 @@ function pngDataUrl(file) {
   assert.deepStrictEqual(errors, [], 'sin errores: ' + errors.join(' | '));
   console.log('  ✓ personaje alto: encuadre automático y «sin cuerpo base» en el ANIM');
 
+  /* 9. cubos sin nombre: la página detecta HEAD / BODY / ARM / LEG por su posición */
+  const sinNombres = {
+    meta: { format_version: '4.10', model_format: 'free', box_uv: true },
+    name: 'sin-nombres', resolution: { width: 64, height: 64 },
+    elements: [
+      { name: 'Cube.001', from: [-4, 24, -4], to: [4, 32, 4], uv_offset: [0, 0] },
+      { name: 'Cube.002', from: [-4, 12, -2], to: [4, 24, 2], uv_offset: [16, 16] },
+      { name: 'Cube.003', from: [-8, 12, -2], to: [-4, 24, 2], uv_offset: [40, 16] },
+      { name: 'Cube.004', from: [4, 12, -2], to: [8, 24, 2], uv_offset: [40, 16] },
+      { name: 'Cube.005', from: [-4, 0, -2], to: [0, 12, 2], uv_offset: [0, 16] },
+      { name: 'Cube.006', from: [0, 0, -2], to: [4, 12, 2], uv_offset: [0, 16] }
+    ],
+    outliner: [{ name: 'todo', origin: [0, 0, 0], children: [] }],
+    textures: [{ name: 't.png', source: 'data:image/png;base64,' + fs.readFileSync(path.join(OUT, 'steve.png')).toString('base64') }]
+  };
+  const rutaSinNombres = path.join(OUT, 'sin-nombres.bbmodel');
+  fs.writeFileSync(rutaSinNombres, JSON.stringify(sinNombres));
+  await page.setInputFiles('#fileInput', [rutaSinNombres]);
+  await page.waitForTimeout(1500);
+  await page.locator('.skin-card').last().locator('.doll-btn').click();
+  await page.waitForFunction(() => document.querySelector('#dollCanvas')._lce3d, null, { timeout: 15000 });
+  await page.evaluate(() => { document.querySelector('#geoDetails').open = true; });
+  await page.waitForTimeout(300);
+  const partes = await page.evaluate(() => [...document.querySelectorAll('.geo-part select')].map((s) => s.value));
+  assert.deepStrictEqual(partes, ['HEAD', 'BODY', 'ARM0', 'ARM1', 'LEG0', 'LEG1'],
+    'seis cubos «Cube.00X» repartidos por su posición: ' + partes.join(','));
+  const resumenPartes = await page.textContent('.geo-parts');
+  assert.ok(/HEAD 1/.test(resumenPartes) && /LEG1 1/.test(resumenPartes), 'el panel resume las partes: ' + resumenPartes);
+
+  // cambiar la parte de la primera caja a mano (sin moverla de sitio)
+  await page.locator('.geo-row').first().locator('.geo-part select').selectOption('BODY');
+  await page.waitForTimeout(400);
+  assert.ok(/BODY 2/.test(await page.textContent('.geo-parts')), 'al cambiarla a BODY el resumen lo refleja');
+
+  // y volver a detectar
+  await page.click('#geoDetect');
+  await page.waitForTimeout(400);
+  await page.evaluate(() => { document.querySelector('#geoDetails').open = true; });
+  assert.deepStrictEqual(await page.evaluate(() => [...document.querySelectorAll('.geo-part select')].map((s) => s.value)),
+    ['HEAD', 'BODY', 'ARM0', 'ARM1', 'LEG0', 'LEG1'], '«Detectar partes» vuelve a repartirlas bien');
+  await page.click('#dollClose');
+  await page.waitForTimeout(200);
+
+  const [dlPartes] = await Promise.all([page.waitForEvent('download'), page.click('#downloadBtn')]);
+  const rutaPackPartes = path.join(OUT, 'partes.pck');
+  await dlPartes.saveAs(rutaPackPartes);
+  const bufPartes = fs.readFileSync(rutaPackPartes);
+  const packPartes = PCK.readPck(bufPartes.buffer.slice(bufPartes.byteOffset, bufPartes.byteOffset + bufPartes.byteLength));
+  const cajasPartes = PCK.extractSkins(packPartes).skins
+    .flatMap((sk) => sk.params.filter((p) => p[0] === 'BOX').map((p) => p[1]));
+  const tiposPartes = cajasPartes.map((l) => l.split(' ')[0]);
+  assert.deepStrictEqual(tiposPartes.slice(-6), ['HEAD', 'BODY', 'ARM0', 'ARM1', 'LEG0', 'LEG1'],
+    'el .pck lleva cada caja en su parte (para que se mueva): ' + tiposPartes.slice(-6).join(','));
+  console.log('  ✓ cubos sin nombre: detectados HEAD/BODY/ARM/LEG y corregibles caja a caja');
+
   assert.deepStrictEqual(errors, [], 'errores de consola: ' + errors.join(' | '));
   console.log('\nE2E MODELO 3D OK');
   await browser.close();

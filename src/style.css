@@ -663,3 +663,16 @@ body.busy .dropzone { opacity: 0.7; }
   .geo-head .btn, .geo-add .btn, .geo-add select, .geo-row .icon-btn.del { min-height: 42px; }
   .geo-details > summary { font-size: 0.74rem; }
 }
+
+/* reparto de partes (HEAD, BODY, ARM0…) en la geometría */
+.geo-parts { font-size: 0.7rem; color: var(--muted); padding: 0 2px 2px; }
+.geo-f.geo-part select {
+  width: 100%; padding: 4px 2px; font-size: 0.68rem; font-family: var(--mono);
+  background: #0c1220; color: var(--cyan-bright, #6ee7f9); border: 1px solid var(--line-strong); border-radius: 6px;
+}
+.geo-f.geo-part { min-width: 64px; }
+.geo-arm { font-size: 0.56rem; color: var(--muted); text-align: center; line-height: 1.1; }
+@media (max-width: 700px) {
+  .geo-f.geo-part select { font-size: 16px; min-height: 36px; }
+  .geo-parts { font-size: 0.66rem; }
+}

@@ -672,6 +672,19 @@ body.busy .dropzone { opacity: 0.7; }
   .geo-details > summary { font-size: 0.74rem; }
 }
 
+/* reparto de partes (HEAD, BODY, ARM0…) en la geometría */
+.geo-parts { font-size: 0.7rem; color: var(--muted); padding: 0 2px 2px; }
+.geo-f.geo-part select {
+  width: 100%; padding: 4px 2px; font-size: 0.68rem; font-family: var(--mono);
+  background: #0c1220; color: var(--cyan-bright, #6ee7f9); border: 1px solid var(--line-strong); border-radius: 6px;
+}
+.geo-f.geo-part { min-width: 64px; }
+.geo-arm { font-size: 0.56rem; color: var(--muted); text-align: center; line-height: 1.1; }
+@media (max-width: 700px) {
+  .geo-f.geo-part select { font-size: 16px; min-height: 36px; }
+  .geo-parts { font-size: 0.66rem; }
+}
+
 </style>
 </head>
 <body>
@@ -3104,12 +3117,24 @@ body.busy .dropzone { opacity: 0.7; }
     host.innerHTML = '';
     const sum = $('#geoSummary');
     if (sum) sum.textContent = 'Geometría: ' + boxes.length + ' cajas · .bbmodel';
+    const cuenta = {};
+    boxes.forEach((b) => { cuenta[b.type] = (cuenta[b.type] || 0) + 1; });
+    const partesTxt = ['HEAD', 'BODY', 'ARM0', 'ARM1', 'LEG0', 'LEG1']
+      .filter((t) => cuenta[t]).map((t) => t + ' ' + cuenta[t]).join(' · ');
+
     const head = document.createElement('div');
     head.className = 'geo-head';
     head.innerHTML = '<b>Geometría (' + boxes.length + ' cajas)</b>' +
       '<button class="btn sm ghost" id="geoDl" title="Descargar esta geometría como .bbmodel">Descargar .bbmodel</button>' +
-      '<span class="muted">toca un número para cambiarlo</span>';
+      '<button class="btn sm ghost" id="geoDetect" title="Reparte las cajas en cabeza, cuerpo, brazos y piernas según su posición">Detectar partes</button>' +
+      '<span class="muted">las partes mandan en el movimiento: la cabeza gira, brazos y piernas oscilan</span>';
     host.appendChild(head);
+    if (partesTxt) {
+      const resumen = document.createElement('div');
+      resumen.className = 'geo-parts';
+      resumen.textContent = 'Partes: ' + partesTxt;
+      host.appendChild(resumen);
+    }
 
     boxes.forEach((box, i) => {
       const row = document.createElement('div');
@@ -3119,7 +3144,12 @@ body.busy .dropzone { opacity: 0.7; }
         '<input type="number" data-i="' + i + '" data-act="' + act + '" value="' + val +
         '" min="' + min + '" max="' + max + '" step="1" inputmode="numeric"></label>';
       row.innerHTML =
-        '<div class="geo-type">' + box.type + '<span>' + (box.armor ? PCK.armorLabel(box.armor) : 'siempre') + '</span></div>' +
+        '<label class="geo-f geo-part"><span>Parte</span>' +
+          '<select data-i="' + i + '" data-act="type" title="A qué parte del muñeco pertenece: de ella depende cómo se mueve">' +
+            PCK.BOX_TYPES.map((t) => '<option value="' + t + '"' + (t === box.type ? ' selected' : '') + '>' + t + '</option>').join('') +
+          '</select>' +
+          '<span class="geo-arm">' + (box.armor ? PCK.armorLabel(box.armor) : 'siempre visible') + '</span>' +
+        '</label>' +
         campo('w', 'An', box.size[0], 1, 64) + campo('h', 'Al', box.size[1], 1, 64) + campo('d', 'Fd', box.size[2], 1, 64) +
         campo('x', 'X', box.pos[0], -32, 32) + campo('y', 'Y', box.pos[1], -32, 32) + campo('z', 'Z', box.pos[2], -32, 32) +
         campo('inf', 'Inf', box.inflate || 0, 0, 4) +
@@ -3152,6 +3182,18 @@ body.busy .dropzone { opacity: 0.7; }
       const i = Number(inp.dataset.i);
       const box = boxes[i];
       if (!box) return;
+      if (inp.dataset.act === 'type') {
+        // cambiar de parte sin que la caja se mueva de sitio
+        const ms = PCK.boxToModelSpace(box);
+        const nueva = PCK.cubeToBox(inp.value, ms.min, ms.max, box.uv, {
+          armor: box.armor, inflate: box.inflate, mirror: box.mirror
+        });
+        Object.assign(box, nueva);
+        persistir();
+        renderGeo(skin, boxes, onPaint);
+        toast('Caja ' + (i + 1) + ' ahora es <b>' + inp.value + '</b>: se moverá con esa parte', 'info');
+        return;
+      }
       const v = Math.max(Number(inp.min), Math.min(Number(inp.max), Math.round(Number(inp.value) || 0)));
       const act = inp.dataset.act;
       if (act === 'w') box.size[0] = Math.max(1, v);
@@ -3183,6 +3225,30 @@ body.busy .dropzone { opacity: 0.7; }
         persistir();
         renderGeo(skin, boxes, onPaint);
         toast('Caja <b>' + tipo + '</b> añadida (' + std.join('×') + '). Retoca sus números o su UV.', 'ok');
+        return;
+      }
+      if (e.target.id === 'geoDetect') {
+        const absolutas = boxes.map((b) => {
+          const ms = PCK.boxToModelSpace(b);
+          return { min: ms.min, max: ms.max };
+        });
+        const tipos = detectarPartes(absolutas);
+        let cambiadas = 0;
+        boxes.forEach((b, i) => {
+          if (b.type === tipos[i]) return;
+          const nueva = PCK.cubeToBox(tipos[i], absolutas[i].min, absolutas[i].max, b.uv, {
+            armor: b.armor, inflate: b.inflate, mirror: b.mirror
+          });
+          Object.assign(b, nueva);
+          cambiadas++;
+        });
+        persistir();
+        renderGeo(skin, boxes, onPaint);
+        const cuenta2 = {};
+        tipos.forEach((t) => { cuenta2[t] = (cuenta2[t] || 0) + 1; });
+        toast('Partes detectadas por posición: <b>' +
+          Object.keys(cuenta2).map((t) => t + ' ' + cuenta2[t]).join(' · ') + '</b>' +
+          (cambiadas ? ' (' + cambiadas + ' caja(s) cambiadas)' : ' (no había nada que cambiar)'), 'ok');
         return;
       }
       if (e.target.id === 'geoDl') {
@@ -3374,6 +3440,57 @@ body.busy .dropzone { opacity: 0.7; }
     return String(str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '');
   }
 
+  /**
+   * Reparte cajas en las partes del jugador (HEAD, BODY, ARM0/1, LEG0/1) por su POSICIÓN,
+   * que es lo que hace que en el juego se muevan: la cabeza gira, los brazos y las piernas
+   * oscilan al andar. Se usa cuando el nombre del cubo no dice nada (Cube.001, mesh_3…).
+   *
+   * @param {Array<{min:number[],max:number[]}>} cajas  en espacio de modelo (y arriba)
+   * @returns {string[]} un tipo por caja
+   */
+  function detectarPartes(cajas) {
+    if (!cajas || !cajas.length) return [];
+    let mn = [Infinity, Infinity, Infinity], mx = [-Infinity, -Infinity, -Infinity];
+    cajas.forEach((c) => {
+      for (let i = 0; i < 3; i++) {
+        mn[i] = Math.min(mn[i], c.min[i]);
+        mx[i] = Math.max(mx[i], c.max[i]);
+      }
+    });
+    const alto = Math.max(1, mx[1] - mn[1]);
+    const ancho = Math.max(1, mx[0] - mn[0]);
+    const cx = (mn[0] + mx[0]) / 2;
+    return cajas.map((c) => {
+      const cy = (c.min[1] + c.max[1]) / 2;
+      const bx = (c.min[0] + c.max[0]) / 2;
+      const u = ((cy - mn[1]) / alto) * 32;      // altura llevada a la escala del jugador (0..32)
+      const dx = (bx - cx) / (ancho / 2);        // -1 borde izquierdo … +1 borde derecho
+      if (u >= 23) return 'HEAD';                // por encima del cuello
+      if (u <= 12.5) return bx < cx ? 'LEG0' : 'LEG1';   // por debajo de la cintura
+      if (Math.abs(dx) >= 0.55) return bx < cx ? 'ARM0' : 'ARM1'; // columnas de los lados
+      return 'BODY';
+    });
+  }
+
+  /** tipos precalculados por posición (uno por elemento, alineado con parsed.elements) */
+  function tiposPorPosicion(elements) {
+    const indices = [];
+    const utiles = [];
+    elements.forEach((el, i) => {
+      const from = el && el.from, to = el && el.to;
+      if (!Array.isArray(from) || !Array.isArray(to)) return;
+      indices.push(i);
+      utiles.push({
+        min: [Math.min(from[0], to[0]), Math.min(from[1], to[1]), Math.min(from[2], to[2])],
+        max: [Math.max(from[0], to[0]), Math.max(from[1], to[1]), Math.max(from[2], to[2])]
+      });
+    });
+    const tipos = detectarPartes(utiles);
+    const porIndice = new Array(elements.length).fill(null);
+    indices.forEach((idx, k) => { porIndice[idx] = tipos[k]; });
+    return porIndice;
+  }
+
   function guessBoxType(cubeName) {
     const n = normName(cubeName);
     if (!n) return null;
@@ -3482,11 +3599,25 @@ body.busy .dropzone { opacity: 0.7; }
     let needsV3 = false;
     let slim = false;
     let hasArmorHint = false;
+    // plan B: reparto por geometría, solo si el modelo no trae nombres de parte
+    // (así una skin de jugador con un cubo suelto sigue comportándose como antes)
+    const porPosicion = tiposPorPosicion(parsed.elements);
+    const conNombre = parsed.elements.filter((el) => (el.name && guessBoxType(el.name)) ||
+      ((parsed.groupOf && parsed.groupOf[el.uuid]) && guessBoxType(parsed.groupOf[el.uuid]))).length;
+    const validos = parsed.elements.filter((el) => Array.isArray(el.from) && Array.isArray(el.to)).length;
+    const sinNombre = validos - conNombre;
+    const usarPosicion = sinNombre >= 2 && sinNombre >= validos * 0.5;
+    let detectados = 0;
 
-    parsed.elements.forEach((el) => {
+    parsed.elements.forEach((el, idx) => {
       const name = el.name || '';
       const grupo = (parsed.groupOf && parsed.groupOf[el.uuid]) || '';
-      const type = guessBoxType(name) || (grupo ? guessBoxType(grupo) : null);
+      let type = guessBoxType(name) || (grupo ? guessBoxType(grupo) : null);
+      let porGeometria = false;
+      if (!type && usarPosicion) {
+        type = porPosicion[idx] || null;
+        porGeometria = !!type;
+      }
       if (!type) {
         warnings.push({
           level: 'warn',
@@ -3494,6 +3625,14 @@ body.busy .dropzone { opacity: 0.7; }
             ': no corresponde a ninguna parte del jugador (se ignora)'
         });
         return;
+      }
+      if (porGeometria) {
+        detectados++;
+        void 0;
+        warnings.push({
+          level: 'info',
+          text: 'Cubo «' + (name || 'sin nombre') + '»: parte detectada por su posición → ' + type
+        });
       }
       const from = el.from, to = el.to;
       if (!Array.isArray(from) || !Array.isArray(to)) {

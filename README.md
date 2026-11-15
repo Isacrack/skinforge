@@ -291,6 +291,32 @@ espalda, y el muñeco gira con ella:
 
 ![El mismo editor en un móvil](capturas/editor-movil.png)
 
+### Detección de partes: que el modelo se mueva
+
+En LCE cada caja pertenece a una **parte** del muñeco (`HEAD`, `BODY`, `ARM0`, `ARM1`, `LEG0`, `LEG1`) y de
+esa parte depende **el movimiento**: la cabeza gira al mirar, los brazos y las piernas oscilan al andar y al
+saltar, el torso acompaña al cuerpo. Si un cubo cae en la parte equivocada se ve quieto o se mueve raro.
+
+La app reparte los cubos de un `.bbmodel` en dos pasos:
+
+1. **Por su nombre o su carpeta** (`head`, `right_arm`, `leg_left`, `hat`, `jacket`…) cuando el modelo los trae.
+2. **Por su posición**, para modelos exportados sin nombres (`Cube.001`, `mesh_3`…): lleva la altura del
+   modelo a la del jugador (0-32) y reparte — por encima del cuello `HEAD`, bajo la cintura `LEG0`/`LEG1`
+   según el lado, y en el torso `BODY` o `ARM0`/`ARM1` según lo escorado que esté respecto al centro.
+
+La detección por posición **solo se activa si el modelo no trae nombres de parte** (la mitad o más de los
+cubos sin nombre), así que una skin de jugador con un cubo suelto se comporta como siempre y ese cubo se
+ignora con su aviso.
+
+**Y siempre se puede corregir a mano**: en la vista 3D, panel *Geometría*, cada caja tiene un selector
+**Parte** y el botón **Detectar partes** vuelve a repartirlas. Cambiar la parte no mueve la caja de sitio
+(se recalcula su posición interna), solo cambia con qué parte del muñeco se anima.
+
+![Selector de parte por caja y botón «Detectar partes»](capturas/partes.png)
+
+Un consejo: las **capas** (`HEADWEAR`, `JACKET`, `SLEEVE0`…) son para pieles de jugador y se ocultan con la
+armadura; para un personaje con geometría propia usa las partes **base**, que son las que se animan.
+
 ### Editar la geometría y bajar el `.bbmodel`
 
 En la vista **3D** hay un panel plegable **Geometría: N cajas · `.bbmodel`** con una fila por caja del modelo:
