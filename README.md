@@ -104,6 +104,11 @@ se usa como textura:
 
 Los nombres se emparejan sin extensión y sin distinguir mayúsculas (`caballero.bbmodel` ↔ `caballero.png`).
 
+Puedes tener **varios modelos a la vez** (uno por skin): cada tarjeta abre su propio `.bbmodel`, y
+el modal escribe en la línea de datos qué fichero estás viendo (`modelo 3D: 12 cajas · max.bbmodel`).
+La vista 3D está orientada **como en el juego**: el brazo derecho del jugador (las cajas de `x` negativa)
+se ve a tu izquierda, de modo que el muñeco no sale espejado.
+
 ![Modelo del caballero pintado con la textura de tu PNG](capturas/png-mas-modelo.png)
 
 ### Qué se puede y qué no

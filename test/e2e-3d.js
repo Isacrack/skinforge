@@ -597,7 +597,9 @@ function pngDataUrl(file) {
   }, CARAS_PAL);
   assert.ok(caras.north && caras.north.n > 200, 'se ve la cara frontal del modelo (north)');
   assert.ok(!caras.south || caras.south.n < 40, 'la vista no enseña la espalda');
-  assert.ok(caras.east && caras.east.n > 40, 'se ve un costado (east)');
+  // la cámara mira el muñeco de frente y un poco por su izquierda: se ve el costado OESTE
+  assert.ok(caras.west && caras.west.n > 40, 'se ve un costado (west)');
+  assert.ok(!caras.east || caras.east.n < 40, 'el costado contrario no se ve');
   assert.ok(caras.north.x1 - caras.north.x0 > 40 && caras.north.y1 - caras.north.y0 > 50, 'la cara frontal ocupa bien el lienzo');
   // el píxel rojo (arriba a la izquierda de la textura) queda arriba a la izquierda, y el azul abajo a la derecha
   assert.ok(caras.marca_roja, 'la marca roja de la textura se pinta');
@@ -1008,6 +1010,32 @@ function pngDataUrl(file) {
     'arrastrar la caja la sube (Y ' + cabezaAntesHead.from[1] + ' → ' + cabezaMov.from[1] + ')');
   assert.strictEqual(cabezaMov.from[0], cabezaAntesHead.from[0], 'y no se va de lado');
 
+  // arrastrar de lado: la caja sigue al ratón (la X del modelo va al revés que la pantalla)
+  await page.locator('#dollCanvas').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(250);
+  const ladoAntes = await page.evaluate(() => {
+    const c = document.querySelector('#dollCanvas');
+    const cabeza = c._lce3d.cajas.find((z) => z.tipo === 'HEAD');
+    const r = c.getBoundingClientRect();
+    const k = c.width / r.width;
+    return {
+      centro: { x: r.left + (cabeza.x0 + cabeza.x1) / 2 / k, y: r.top + (cabeza.y0 + cabeza.y1) / 2 / k },
+      x0: cabeza.x0
+    };
+  });
+  await page.mouse.move(ladoAntes.centro.x, ladoAntes.centro.y);
+  await page.mouse.down();
+  await page.mouse.move(ladoAntes.centro.x + 40, ladoAntes.centro.y, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForTimeout(400);
+  const ladoDespues = await page.evaluate(() => {
+    const c = document.querySelector('#dollCanvas');
+    const cabeza = c._lce3d.cajas.find((z) => z.tipo === 'HEAD');
+    return { x0: cabeza.x0 };
+  });
+  assert.ok(ladoDespues.x0 > ladoAntes.x0 + 10,
+    'al arrastrar a la derecha la caja se mueve a la derecha: ' + Math.round(ladoAntes.x0) + ' → ' + Math.round(ladoDespues.x0));
+
   // tirador de ancho: se estira hacia la derecha
   await page.locator('#dollCanvas').scrollIntoViewIfNeeded();
   await page.waitForTimeout(200);
@@ -1033,6 +1061,134 @@ function pngDataUrl(file) {
   await page.locator('#dollOverlay .modal').screenshot({ path: path.join(OUT, 'shot-pivotes.png') });
   await page.click('#dollClose');
   console.log('  ✓ pivotes arrastrables, «cuadrar» con el juego y cajas movidas/estiradas sin números');
+
+  /* deja la cámara en su sitio: los bloques anteriores giran el muñeco y el giro se recuerda */
+  const vistaAlFrente = async () => {
+    const sl = await page.$('#yawRange');
+    if (sl) { await page.$eval('#yawRange', (el) => { el.value = '0'; el.dispatchEvent(new Event('input')); }); await page.waitForTimeout(250); }
+  };
+
+  /* 17. la vista NO está espejada: el brazo derecho del jugador sale a la izquierda */
+  // (en Minecraft el brazo derecho —UV 40,16— se ve a la IZQUIERDA de quien mira de frente)
+  const { encodePng: enc2 } = require('./mkskins.js');
+  const texturaLados = enc2(64, 64, (x, y) => {
+    if (x >= 40 && x < 56 && y >= 16 && y < 32) return [235, 20, 20, 255];   // brazo DERECHO
+    if (x >= 32 && x < 48 && y >= 48 && y < 64) return [30, 40, 235, 255];   // brazo IZQUIERDO
+    return [140, 140, 140, 255];
+  });
+  const lados = standardModel({ name: 'Lados', textureB64: 'data:image/png;base64,' + texturaLados.toString('base64') });
+  lados.elements = lados.elements.filter((e) => !/_sleeve$|_pants$|^jacket$|^hat$|^tail$/.test(e.name));  // sin capas encima
+  const ladosPath = path.join(OUT, 'lados.bbmodel');
+  fs.writeFileSync(ladosPath, JSON.stringify(lados));
+  await page.click('#clearBtn');
+  await page.waitForFunction(() => document.querySelectorAll('.skin-card').length === 0, null, { timeout: 5000 });
+  await page.setInputFiles('#fileInput', ladosPath);
+  await page.waitForFunction(() => /Modelo:/.test(document.querySelector('.skin-card')?.textContent || ''), null, { timeout: 15000 });
+  await page.click('.skin-card .doll-btn');
+  await page.waitForFunction(() => document.querySelector('#dollCanvas')._lce3d, null, { timeout: 15000 });
+  await vistaAlFrente();
+  if (await page.isChecked('#showArmorChk')) await page.uncheck('#showArmorChk');
+  if (await page.isChecked('#showCapasChk')) await page.uncheck('#showCapasChk');
+  await page.waitForTimeout(400);
+  const ladosRes = await page.evaluate(() => {
+    const c = document.querySelector('#dollCanvas');
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    let rojoIzq = 0, rojoDer = 0, azulIzq = 0, azulDer = 0;
+    for (let y = 0; y < c.height; y++) {
+      for (let x = 0; x < c.width; x++) {
+        const i = (y * c.width + x) * 4;
+        if (d[i + 3] < 200) continue;
+        const rojo = d[i] > 150 && d[i + 1] < 80 && d[i + 2] < 80;
+        const azul = d[i + 2] > 150 && d[i] < 90 && d[i + 1] < 90;
+        if (rojo) { if (x < c.width / 2) rojoIzq++; else rojoDer++; }
+        else if (azul) { if (x < c.width / 2) azulIzq++; else azulDer++; }
+      }
+    }
+    return { rojoIzq, rojoDer, azulIzq, azulDer };
+  });
+  assert.ok(ladosRes.rojoIzq > 200, 'el brazo derecho se ve (rojo): ' + JSON.stringify(ladosRes));
+  assert.strictEqual(ladosRes.rojoDer, 0, 'el brazo derecho NO se sale a la derecha: ' + JSON.stringify(ladosRes));
+  assert.ok(ladosRes.azulDer > 200 && ladosRes.azulIzq === 0, 'el brazo izquierdo queda a la derecha: ' + JSON.stringify(ladosRes));
+  await page.screenshot({ path: path.join(OUT, 'shot-lados.png'), clip: await page.evaluate(() => {
+    const c = document.querySelector('#dollCanvas'); const r = c.getBoundingClientRect();
+    return { x: r.left, y: r.top, width: r.width, height: r.height };
+  }) });
+  await page.click('#dollClose');
+  console.log('  ✓ la vista 3D no está espejada: el brazo derecho queda a la izquierda');
+
+  /* 18. dos .bbmodel con su textura: cada tarjeta enseña SU modelo */
+  const texRoja = enc2(64, 64, () => [220, 30, 30, 255]);
+  const texAzul = enc2(64, 64, () => [40, 60, 220, 255]);
+  const maxM = standardModel({ name: 'Max', textureB64: 'data:image/png;base64,' + texRoja.toString('base64') });
+  const pepeM = standardModel({ name: 'Pepe', textureB64: 'data:image/png;base64,' + texAzul.toString('base64') });
+  // geometría claramente distinta: Pepe tiene la cabeza más alta y un ala en la espalda
+  const cabezaPepe = pepeM.elements.find((e) => e.name === 'head');
+  cabezaPepe.from = [-4, 24, -4]; cabezaPepe.to = [4, 38, 4];
+  pepeM.elements.push({ name: 'wing', from: [4, 16, 2], to: [10, 30, 4], origin: [0, 24, 0], uv_offset: [0, 0], box_uv: true });
+  const maxPath = path.join(OUT, 'max.bbmodel');
+  const pepePath = path.join(OUT, 'pepe.bbmodel');
+  fs.writeFileSync(maxPath, JSON.stringify(maxM));
+  fs.writeFileSync(pepePath, JSON.stringify(pepeM));
+  await page.click('#clearBtn');
+  await page.waitForFunction(() => document.querySelectorAll('.skin-card').length === 0, null, { timeout: 5000 });
+  await page.setInputFiles('#fileInput', [maxPath, pepePath]);
+  await page.waitForFunction(() => document.querySelectorAll('.skin-card').length === 2, null, { timeout: 15000 });
+  await page.waitForFunction(() => document.querySelectorAll('.skin-card .pill.model-on').length === 2, null, { timeout: 15000 });
+
+  const abrirTarjeta = async (i) => {
+    await page.click(`.skin-card:nth-child(${i + 1}) .doll-btn`);
+    await page.waitForFunction(() => document.querySelector('#dollCanvas')._lce3d, null, { timeout: 15000 });
+    await page.waitForTimeout(450);
+    await vistaAlFrente();
+    if (await page.isChecked('#showArmorChk')) await page.uncheck('#showArmorChk');
+    if (await page.isChecked('#showCapasChk')) await page.uncheck('#showCapasChk');
+    await page.waitForTimeout(400);
+    return page.evaluate(() => {
+      const c = document.querySelector('#dollCanvas');
+      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+      let rojo = 0, azul = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i + 3] < 200) continue;
+        if (d[i] > 150 && d[i + 1] < 90 && d[i + 2] < 90) rojo++;
+        if (d[i + 2] > 150 && d[i] < 110 && d[i + 1] < 110) azul++;
+      }
+      const cab = (c._lce3d.cajas || [])[0] || {};
+      return { meta: document.querySelector('#dollMeta').textContent, rojo, azul, alto: cab.y1 - cab.y0, x0: cab.x0 };
+    });
+  };
+  const vMax = await abrirTarjeta(0);
+  assert.ok(/max\.bbmodel/.test(vMax.meta), 'la primera tarjeta dice que enseña max.bbmodel: ' + vMax.meta);
+  await page.click('#dollClose');
+  const vPepe = await abrirTarjeta(1);
+  assert.ok(/pepe\.bbmodel/.test(vPepe.meta), 'la segunda tarjeta dice que enseña pepe.bbmodel: ' + vPepe.meta);
+  assert.ok(vMax.rojo > 400 && vMax.azul < 60, 'la tarjeta de Max pinta su textura roja: ' + JSON.stringify([vMax.rojo, vMax.azul]));
+  assert.ok(vPepe.azul > 400 && vPepe.rojo < 60, 'la de Pepe pinta la azul (no la de Max): ' + JSON.stringify([vPepe.rojo, vPepe.azul]));
+  assert.ok(Math.abs(vPepe.alto - vMax.alto) > 10, 'la geometría es la de cada modelo (' + Math.round(vMax.alto) + ' vs ' + Math.round(vPepe.alto) + ')');
+  await page.click('#dollClose');
+  console.log('  ✓ dos .bbmodel cargados: cada tarjeta enseña su modelo y su textura');
+
+  /* 19. dos .bbmodel que apuntan a una textura externa con el MISMO nombre: no se pisan */
+  const sinTex = (nombre) => {
+    const m = standardModel({ name: nombre });
+    m.textures = [{ name: 'skin.png', uv_width: 64, uv_height: 64 }];   // solo la ruta, sin imagen
+    return m;
+  };
+  const uno = sinTex('Uno');
+  const dos = sinTex('Dos');
+  dos.elements.find((e) => e.name === 'head').to = [4, 40, 4];
+  const unoPath = path.join(OUT, 'uno.bbmodel');
+  const dosPath = path.join(OUT, 'dos.bbmodel');
+  fs.writeFileSync(unoPath, JSON.stringify(uno));
+  fs.writeFileSync(dosPath, JSON.stringify(dos));
+  await page.click('#clearBtn');
+  await page.waitForFunction(() => document.querySelectorAll('.skin-card').length === 0, null, { timeout: 5000 });
+  await page.setInputFiles('#fileInput', [unoPath, dosPath]);
+  await page.waitForFunction(() => document.querySelectorAll('.skin-card').length === 2, null, { timeout: 15000 });
+  const modelos = await page.$$eval('.skin-card .pill.model-on', (els) => els.map((e) => e.textContent));
+  assert.strictEqual(modelos.length, 2, 'las dos skins conservan su modelo: ' + JSON.stringify(modelos));
+  const nombres = await page.$$eval('.skin-card [data-role="name"]', (els) => els.map((e) => e.value));
+  assert.deepStrictEqual(nombres, ['Uno', 'Dos'], 'una tarjeta por modelo: ' + JSON.stringify(nombres));
+  console.log('  ✓ dos .bbmodel con la misma textura externa: no se pisan');
 
   assert.deepStrictEqual(errors, [], 'errores de consola: ' + errors.join(' | '));
   console.log('\nE2E MODELO 3D OK');

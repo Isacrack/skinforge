@@ -327,6 +327,7 @@
       // si ya hay una skin con el mismo nombre (el del modelo o el de su textura), el modelo va a ella
       skin = state.skins.find((x) => !x.model3d &&
         (base(x.name) === baseModelo || (nombreTex && base(x.name) === nombreTex))) || null;
+      if (skin) toast('Modelo <b>' + escapeHtml(file.name) + '</b> → skin <b>' + escapeHtml(skin.name) + '</b>', 'ok');
       if (!skin) {
         skin = await addSkinFromBlob(dataUrlToBlob(parsed.textureUrl), { name: parsed.name || baseModelo, src: file.name });
         if (state.skins.filter((x) => !x.model3d).length) {
@@ -335,10 +336,12 @@
         }
       }
     } else {
-      // solo apunta a una ruta: busca esa skin ya cargada
+      // solo apunta a una ruta: busca esa skin ya cargada (nunca una que ya tenga modelo:
+      // si no, el segundo .bbmodel se merendaría el primero y su tarjeta enseñaría el ajeno)
       if (nombreTex) {
-        skin = state.skins.find((x) => (x.name || '').toLowerCase() === nombreTex) ||
-          state.skins.find((x) => base((x.src || '').split('›').pop()) === nombreTex) || null;
+        skin = state.skins.find((x) => !x.model3d && base(x.name) === nombreTex) ||
+          state.skins.find((x) => !x.model3d && base((x.src || '').split('›').pop()) === nombreTex) || null;
+        if (skin) toast('Modelo <b>' + escapeHtml(file.name) + '</b> → skin <b>' + escapeHtml(skin.name) + '</b>', 'ok');
       }
       // o la única skin que aún no tiene modelo (soltar la PNG primero y el .bbmodel después)
       if (!skin) {
@@ -772,6 +775,9 @@
     overlay.classList.add('show', 'with-boxes');
     $('#dollName').textContent = skin.name || 'Skin';
     const c = $('#dollCanvas');
+    // que no quede ni un píxel del modelo que se estaba viendo antes
+    try { c.getContext('2d').clearRect(0, 0, c.width, c.height); } catch (e) { /* canvas vacío */ }
+    c._lce3d = null;
     const note = $('#dollNote');
     const boxes = skin.model3d ? skin.model3d.boxes : standardBoxesFor(skin);
     armorSeleccionada = null;
@@ -780,7 +786,8 @@
       const m = $('#dollMeta');
       if (!m) return;
       m.textContent = skin.model3d
-        ? skin.w + '×' + skin.h + ' · modelo 3D: ' + boxes.length + ' cajas · XMLVERSION ' + skin.model3d.xmlVersion
+        ? skin.w + '×' + skin.h + ' · modelo 3D: ' + boxes.length + ' cajas · ' +
+          (skin.model3d.fileName ? skin.model3d.fileName + ' · ' : '') + 'XMLVERSION ' + skin.model3d.xmlVersion
         : skin.w + '×' + skin.h + ' · ' + skin.model + ' · ' + humanSize(skin.png.length);
     };
 
@@ -810,7 +817,7 @@
       const t = ((ts - t0) / 1000) * velocidad;
       pose = ANIMACIONES[animNombre] ? ANIMACIONES[animNombre](t) : { rot: {}, bob: 0 };
       if (giroAuto) {
-        state.yaw = (state.yaw == null ? Math.PI - 0.6 : state.yaw) + 0.018;
+        state.yaw = (state.yaw == null ? Math.PI - 0.6 : state.yaw) - 0.018;
         const sl = $('#yawRange');
         if (sl) sl.value = String(Math.round((state.yaw - (Math.PI - 0.6)) * 180 / Math.PI) % 360);
       }
@@ -862,7 +869,8 @@
 
     if (skin.model3d) {
       $('#dollMeta').textContent = skin.w + '×' + skin.h + ' · modelo 3D: ' + boxes.length +
-        ' cajas · XMLVERSION ' + skin.model3d.xmlVersion;
+        ' cajas · ' + (skin.model3d.fileName ? skin.model3d.fileName + ' · ' : '') +
+        'XMLVERSION ' + skin.model3d.xmlVersion;
       if (note) {
         const w = skin.model3d.warnings || [];
         note.innerHTML = (w.length
@@ -936,7 +944,7 @@
     // arrastrar el lienzo para girar el muñeco
     c._lceCtx = c._lceCtx || {};
     c._lceCtx.rotar = (dx, dy) => {
-      state.yaw = (state.yaw == null ? Math.PI - 0.6 : state.yaw) + dx * 0.012;
+      state.yaw = (state.yaw == null ? Math.PI - 0.6 : state.yaw) - dx * 0.012;   // la X está espejada: mismo gesto, mismo giro
       state.pitch = Math.max(-0.15, Math.min(1.1, (state.pitch == null ? 0.34 : state.pitch) + dy * 0.008));
       const sl = $('#yawRange');
       if (sl) sl.value = String(Math.round((state.yaw - (Math.PI - 0.6)) * 180 / Math.PI) % 360);
@@ -3073,7 +3081,7 @@
 
     // encuadre: el jugador estándar tiene su escala fija; los modelos más grandes
     // (personajes de Blockbench, criaturas…) se centran y se escalan solos para que entren
-    let scale = 9, cx = 8, cy = 16;
+    let scale = 9, cx = 0, cy = 16;   // cx = 0: el jugador estándar (x de -8 a 8) queda centrado
     if (boxes.length) {
       let mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9];
       boxes.forEach((b) => {
@@ -3142,7 +3150,10 @@
     };
 
     const project = (x, y, z) => {
-      const px = x - cx, py = y - cy, pz = z;
+      // ojo: la X del modelo va al revés que en la pantalla. En Minecraft el brazo
+      // derecho del jugador (x negativa) se ve a la IZQUIERDA de quien lo mira; si
+      // no se invierte, el muñeco sale espejado (la armadura y el .bbmodel, también).
+      const px = cx - x, py = y - cy, pz = z;
       const rx = px * cosY - pz * sinY;
       const rz = px * sinY + pz * cosY;
       const ry = py * cosP - rz * sinP;
@@ -3209,7 +3220,9 @@
       /** pinta un trozo de textura deformado sobre un cuadrilátero en pantalla */
       const pintarCara = (pts, sx, sy, sw, sh, shade, fuente) => {
         if (sw <= 0 || sh <= 0 || !pixels) return false;
-        const p0 = pts[0], p1 = pts[1], p3 = pts[3];
+        // la vista 3D está espejada en X para que el muñeco se vea como en el juego,
+        // así que la U de la textura se pega al revés: si no, los rótulos saldrían del revés
+        const p0 = pts[1], p1 = pts[0], p3 = pts[2];
         ctx.save();
         ctx.beginPath();
         pts.forEach((q, i) => (i ? ctx.lineTo(q.x, q.y) : ctx.moveTo(q.x, q.y)));
@@ -3488,7 +3501,9 @@
     };
     /** cómo se mueve en pantalla un paso de 1 píxel en cada eje del modelo */
     const vectores = (pr) => ({
-      x: [pr.cosY * pr.escala, pr.sinP * pr.sinY * pr.escala],
+      // la X del modelo está espejada en pantalla (ver project): por eso los dos
+      // componentes del eje X van negados respecto a la fórmula «normal»
+      x: [-pr.cosY * pr.escala, -pr.sinP * pr.sinY * pr.escala],
       y: [0, -pr.cosP * pr.escala],
       z: [-pr.sinY * pr.escala, pr.sinP * pr.cosY * pr.escala]
     });
