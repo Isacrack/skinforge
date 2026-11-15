@@ -685,6 +685,25 @@ body.busy .dropzone { opacity: 0.7; }
   .geo-parts { font-size: 0.66rem; }
 }
 
+/* animación del muñeco (andar, correr, nadar…) */
+.doll-anim { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.doll-anim .arm { font-size: 0.74rem; padding: 4px 8px; display: inline-flex; align-items: center; gap: 6px; }
+.doll-anim select {
+  padding: 6px 8px; font-size: 0.76rem; border-radius: 8px; background: #0c1220; color: var(--text);
+  border: 1px solid var(--line-strong);
+}
+.doll-anim .vel input[type=range] { width: 92px; accent-color: #6ee7f9; }
+.doll-anim #animPlay { min-width: 108px; }
+.doll-anim #animPlay.on { background: linear-gradient(180deg, #7ee0f4, #45b6cf); color: #08131f; border-color: transparent; }
+#dollCanvas { cursor: grab; }
+#dollCanvas.arrastrando { cursor: grabbing; }
+@media (max-width: 700px) {
+  .doll-anim { gap: 8px; }
+  .doll-anim select, .doll-anim .btn, .doll-anim .arm { min-height: 42px; }
+  .doll-anim .vel input[type=range] { width: 72px; }
+  .doll-anim #animPlay { flex: 1 1 40%; }
+}
+
 </style>
 </head>
 <body>
@@ -1210,6 +1229,22 @@ body.busy .dropzone { opacity: 0.7; }
       <label class="arm"><input type="checkbox" id="showCapeChk" checked> Capa</label>
       <label class="arm yaw" title="Girar el muñeco">Girar <input type="range" id="yawRange" min="-180" max="180" step="5" value="0"></label>
       <span class="muted">las capas (sombrero, chaqueta…) respetan la transparencia</span>
+    </div>
+    <div class="doll-anim">
+      <label class="arm">Movimiento
+        <select id="animSel" title="Ver el modelo andando, corriendo, nadando…">
+          <option value="quieto">Quieto</option>
+          <option value="andar">Andando</option>
+          <option value="correr">Corriendo</option>
+          <option value="nadar">Nadando</option>
+          <option value="saltar">Saltando</option>
+          <option value="agachado">Agachado</option>
+          <option value="saludar">Saludando</option>
+        </select>
+      </label>
+      <button class="btn sm" id="animPlay" title="Reproducir / parar">▶ Reproducir</button>
+      <label class="arm vel">Velocidad <input type="range" id="animVel" min="0.3" max="2.5" step="0.1" value="1"></label>
+      <button class="btn sm ghost" id="animRotate" title="Girar el muñeco; también puedes arrastrarlo con el dedo o el ratón">↻ Girar</button>
     </div>
     <div class="muted" id="dollMeta"></div>
     <div class="doll-note" id="dollNote"></div>
@@ -2772,6 +2807,45 @@ body.busy .dropzone { opacity: 0.7; }
       return !!(chk && chk.checked);
     };
 
+    // ---------- animación (andar, correr, nadar…) y arrastrar para girar ----------
+    let pose = { rot: {}, bob: 0 };
+    let animNombre = 'quieto';
+    let jugando = false;
+    let rafAnim = null;
+    let t0 = 0;
+    let velocidad = 1;
+    let giroAuto = false;
+
+    const pasoAnim = (ts) => {
+      if (!jugando) return;
+      if (!t0) t0 = ts;
+      const t = ((ts - t0) / 1000) * velocidad;
+      pose = ANIMACIONES[animNombre] ? ANIMACIONES[animNombre](t) : { rot: {}, bob: 0 };
+      if (giroAuto) {
+        state.yaw = (state.yaw == null ? Math.PI - 0.6 : state.yaw) + 0.018;
+        const sl = $('#yawRange');
+        if (sl) sl.value = String(Math.round((state.yaw - (Math.PI - 0.6)) * 180 / Math.PI) % 360);
+      }
+      pintar(armorSeleccionada);
+      rafAnim = requestAnimationFrame(pasoAnim);
+    };
+    const pararAnim = () => {
+      jugando = false;
+      giroAuto = false;
+      if (rafAnim) cancelAnimationFrame(rafAnim);
+      rafAnim = null;
+      const b = $('#animPlay');
+      if (b) { b.classList.remove('on'); b.textContent = '▶ Reproducir'; }
+    };
+    const arrancarAnim = () => {
+      if (jugando) { pararAnim(); return; }
+      jugando = true;
+      t0 = 0;
+      const b = $('#animPlay');
+      if (b) { b.classList.add('on'); b.textContent = '⏸ Parar'; }
+      rafAnim = requestAnimationFrame(pasoAnim);
+    };
+
     const pintar = (sel) => {
       const chkB = $('#showBaseChk'), chkC = $('#showCapasChk');
       const chkCape = $('#showCapeChk');
@@ -2782,6 +2856,9 @@ body.busy .dropzone { opacity: 0.7; }
         capas: chkC ? chkC.checked : true,
         capa: chkCape ? chkCape.checked : true,
         yaw: state.yaw == null ? undefined : state.yaw,
+        pitch: state.pitch,
+        rot: pose.rot,
+        bob: pose.bob,
         piezas: verArmadura() ? undefined : []   // la armadura solo si la pides
       });
       repintar3D = () => pintar(armorSeleccionada);
@@ -2837,6 +2914,43 @@ body.busy .dropzone { opacity: 0.7; }
       };
     }
 
+    const animSel = $('#animSel');
+    if (animSel) {
+      animSel.value = 'quieto';
+      animSel.onchange = () => {
+        animNombre = animSel.value;
+        if (!jugando) arrancarAnim();
+        else { t0 = 0; }
+        if (animNombre === 'quieto') pararAnim();
+      };
+    }
+    const animPlay = $('#animPlay');
+    if (animPlay) {
+      animPlay.onclick = () => {
+        if (!jugando && animNombre === 'quieto' && animSel) { animSel.value = 'andar'; animNombre = 'andar'; }
+        arrancarAnim();
+      };
+    }
+    const animVel = $('#animVel');
+    if (animVel) animVel.oninput = () => { velocidad = Number(animVel.value) || 1; };
+    const animRot = $('#animRotate');
+    if (animRot) {
+      animRot.onclick = () => {
+        giroAuto = !giroAuto;
+        animRot.classList.toggle('on', giroAuto);
+        if (giroAuto && !jugando) arrancarAnim();
+      };
+    }
+    // arrastrar el lienzo para girar el muñeco
+    c._lceCtx = c._lceCtx || {};
+    c._lceCtx.rotar = (dx, dy) => {
+      state.yaw = (state.yaw == null ? Math.PI - 0.6 : state.yaw) + dx * 0.012;
+      state.pitch = Math.max(-0.15, Math.min(1.1, (state.pitch == null ? 0.34 : state.pitch) + dy * 0.008));
+      const sl = $('#yawRange');
+      if (sl) sl.value = String(Math.round((state.yaw - (Math.PI - 0.6)) * 180 / Math.PI) % 360);
+      pintar(armorSeleccionada);
+    };
+
     const chkCapas = $('#showCapasChk');
     if (chkCapas) {
       chkCapas.checked = state.showCapas !== false;
@@ -2862,7 +2976,7 @@ body.busy .dropzone { opacity: 0.7; }
       render();
     });
 
-    $('#dollClose').onclick = () => overlay.classList.remove('show');
+    $('#dollClose').onclick = () => { pararAnim(); overlay.classList.remove('show'); };
     overlay.onclick = (e) => { if (e.target === overlay) overlay.classList.remove('show'); };
   }
 
@@ -4528,6 +4642,101 @@ body.busy .dropzone { opacity: 0.7; }
     return [min, max];
   }
 
+  /** textura ya volcada a canvas + píxeles (la animación redibuja muchas veces por segundo) */
+  const TEXTURAS = new Map();
+  function texturaDeSkin(url, img) {
+    const ya = TEXTURAS.get(url);
+    if (ya) return ya;
+    const off = document.createElement('canvas');
+    off.width = img.width; off.height = img.height;
+    const octx = off.getContext('2d');
+    octx.imageSmoothingEnabled = false;
+    octx.drawImage(img, 0, 0);
+    let pixels = null;
+    try { pixels = octx.getImageData(0, 0, off.width, off.height).data; } catch (e) { pixels = null; }
+    const datos = { off: off, pixels: pixels, medias: new Map() };
+    TEXTURAS.set(url, datos);
+    return datos;
+  }
+
+  /** imágenes de skin ya decodificadas (la animación redibuja muchas veces por segundo) */
+  const IMAGENES_SKIN = new Map();
+  function imagenDeSkin(url) {
+    let img = IMAGENES_SKIN.get(url);
+    if (!img) {
+      img = new Image();
+      img.src = url;
+      IMAGENES_SKIN.set(url, img);
+    }
+    return img;
+  }
+
+  /** animaciones del muñeco: ángulos por parte (radianes) y balanceo vertical */
+  const ANIMACIONES = {
+    quieto: () => ({
+      rot: { HEAD: { y: Math.sin(Date.now() / 900) * 0.14 }, ARM0: { x: 0.04 }, ARM1: { x: 0.04 } }, bob: 0
+    }),
+    andar: (t) => {
+      const s = Math.sin(t * 4.2), c = Math.cos(t * 8.4);
+      return {
+        rot: {
+          LEG0: { x: s * 0.55 }, LEG1: { x: -s * 0.55 },
+          ARM0: { x: -s * 0.5 }, ARM1: { x: s * 0.5 },
+          BODY: { x: 0.03 }, HEAD: { y: Math.sin(t * 1.1) * 0.1 }
+        },
+        bob: Math.abs(c) * 0.4
+      };
+    },
+    correr: (t) => {
+      const s = Math.sin(t * 7.5), c = Math.cos(t * 15);
+      return {
+        rot: {
+          LEG0: { x: s * 0.95 }, LEG1: { x: -s * 0.95 },
+          ARM0: { x: -s * 0.85 }, ARM1: { x: s * 0.85 },
+          BODY: { x: 0.18 }, HEAD: { x: -0.12 }
+        },
+        bob: Math.abs(c) * 0.7
+      };
+    },
+    nadar: (t) => {
+      const s = Math.sin(t * 2.6), p = Math.sin(t * 4.4);
+      return {
+        rot: {
+          BODY: { x: 0.5 }, HEAD: { x: -0.4 },
+          ARM0: { x: -1.25 + s * 0.95 }, ARM1: { x: -1.25 - s * 0.95 },
+          LEG0: { x: p * 0.32 }, LEG1: { x: -p * 0.32 }
+        },
+        bob: -1
+      };
+    },
+    saltar: () => ({
+      rot: { ARM0: { x: -2.3 }, ARM1: { x: -2.3 }, LEG0: { x: 0.28 }, LEG1: { x: -0.28 }, HEAD: { x: -0.12 } },
+      bob: 1.2
+    }),
+    agachado: () => ({
+      rot: { BODY: { x: 0.55 }, HEAD: { x: -0.45 }, LEG0: { x: 0.22 }, LEG1: { x: -0.22 }, ARM0: { x: 0.18 }, ARM1: { x: 0.18 } },
+      bob: -1.4
+    }),
+    saludar: (t) => ({
+      rot: {
+        ARM1: { x: -2.6, y: Math.sin(t * 4) * 0.5 },
+        ARM0: { x: 0.1 },
+        HEAD: { y: Math.sin(t * 1.6) * 0.14 }
+      },
+      bob: 0
+    })
+  };
+
+  /** a qué parte del muñeco va pegada cada pieza de armadura (para animarla con él) */
+  const PARTE_DE_ARMADURA = {
+    HELMET: 'HEAD', HAT: 'HEAD',
+    CHEST: 'BODY', WAIST: 'BODY',
+    SHOULDER0: 'ARM0', SHOULDER1: 'ARM1',
+    TOOL0: 'ARM0', TOOL1: 'ARM1',
+    PANTS0: 'LEG0', PANTS1: 'LEG1',
+    BOOT0: 'LEG0', BOOT1: 'LEG1'
+  };
+
   /**
    * Vista 3D isométrica con la skin y, encima, las piezas de armadura.
    * Deja en canvas._lce3d lo necesario para poder arrastrarlas.
@@ -4568,9 +4777,40 @@ body.busy .dropzone { opacity: 0.7; }
     canvas._lce3d = null;
     if (!boxes.length) return;
 
-    const yaw = (opts.yaw == null ? Math.PI - 0.6 : opts.yaw), pitch = 0.34;   // de frente: se ve la cara y el lado derecho
+    const yaw = (opts.yaw == null ? Math.PI - 0.6 : opts.yaw), pitch = (opts.pitch == null ? 0.34 : opts.pitch);
     const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
     const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
+
+    // postura: cada parte gira alrededor de su pivote (es lo que hace el juego al andar)
+    const rot = opts.rot || {};
+    const bob = Number(opts.bob) || 0;
+    const aplicarRot = (p, tipo) => {
+      let x = p[0], y = p[1] + bob, z = p[2];
+      const r = rot[tipo];
+      if (r && (r.x || r.y)) {
+        const piv = PCK.BOX_PIVOT[tipo] || [0, 24, 0];
+        let dx = x - piv[0], dy = y - piv[1], dz = z - piv[2];
+        if (r.x) {
+          const c = Math.cos(r.x), s2 = Math.sin(r.x);
+          const ny = dy * c - dz * s2;
+          dz = dy * s2 + dz * c;
+          dy = ny;
+        }
+        if (r.y) {
+          const c = Math.cos(r.y), s2 = Math.sin(r.y);
+          const nx = dx * c + dz * s2;
+          dz = -dx * s2 + dz * c;
+          dx = nx;
+        }
+        x = dx + piv[0]; y = dy + piv[1]; z = dz + piv[2];
+      }
+      return [x, y, z];
+    };
+    const proyectarParte = (p, tipo) => {
+      const q = aplicarRot(p, tipo);
+      return project(q[0], q[1], q[2]);
+    };
+
     const project = (x, y, z) => {
       const px = x - cx, py = y - cy, pz = z;
       const rx = px * cosY - pz * sinY;
@@ -4580,18 +4820,17 @@ body.busy .dropzone { opacity: 0.7; }
       return { x: W / 2 + rx * scale, y: H / 2 - ry * scale, depth: depth };
     };
 
-    const img = new Image();
-    img.onload = () => {
-      const off = document.createElement('canvas');
-      off.width = img.width; off.height = img.height;
-      const octx = off.getContext('2d');
-      octx.imageSmoothingEnabled = false;
-      octx.drawImage(img, 0, 0);
-      let pixels = null;
-      try { pixels = octx.getImageData(0, 0, off.width, off.height).data; } catch (e) { pixels = null; }
+    const dibujar = () => {
+      const cacheTex = texturaDeSkin(skin.thumbUrl, img);
+      const off = cacheTex.off;
+      const pixels = cacheTex.pixels;
       /** color medio y alfa media de un trozo de textura (alfa 0 = transparente) */
+      const medias = cacheTex.medias;
       const media = (u, v, w, h) => {
         if (!pixels) return { r: 150, g: 150, b: 150, a: 1 };
+        const clave = u + '|' + v + '|' + w + '|' + h;
+        const guardado = medias.get(clave);
+        if (guardado) return guardado;
         let r = 0, g = 0, b = 0, n = 0, aSum = 0, total = 0;
         const x0 = Math.max(0, Math.floor(u)), y0 = Math.max(0, Math.floor(v));
         const x1 = Math.min(off.width - 1, Math.ceil(u + w)), y1 = Math.min(off.height - 1, Math.ceil(v + h));
@@ -4604,8 +4843,10 @@ body.busy .dropzone { opacity: 0.7; }
             r += pixels[o]; g += pixels[o + 1]; b += pixels[o + 2]; n++;
           }
         }
-        if (!n) return { r: 0, g: 0, b: 0, a: 0 };
-        return { r: Math.round(r / n), g: Math.round(g / n), b: Math.round(b / n), a: total ? aSum / total / 255 : 1 };
+        if (!n) { const vacio = { r: 0, g: 0, b: 0, a: 0 }; medias.set(clave, vacio); return vacio; }
+        const col = { r: Math.round(r / n), g: Math.round(g / n), b: Math.round(b / n), a: total ? aSum / total / 255 : 1 };
+        medias.set(clave, col);
+        return col;
       };
 
       /**
@@ -4672,8 +4913,8 @@ body.busy .dropzone { opacity: 0.7; }
         const ANCHO = 10, ALTO = 16, Y0 = 24, Z0 = 2.35, INCLINA = 0.6;
         const zDe = (y) => Z0 + (Y0 - y) * (INCLINA / ALTO);
         const pts = [
-          project(-ANCHO / 2, Y0, zDe(Y0)), project(ANCHO / 2, Y0, zDe(Y0)),
-          project(ANCHO / 2, Y0 - ALTO, zDe(Y0 - ALTO)), project(-ANCHO / 2, Y0 - ALTO, zDe(Y0 - ALTO))
+          proyectarParte([-ANCHO / 2, Y0, zDe(Y0)], 'BODY'), proyectarParte([ANCHO / 2, Y0, zDe(Y0)], 'BODY'),
+          proyectarParte([ANCHO / 2, Y0 - ALTO, zDe(Y0 - ALTO)], 'BODY'), proyectarParte([-ANCHO / 2, Y0 - ALTO, zDe(Y0 - ALTO)], 'BODY')
         ];
         // ¿la espalda mira a la cámara? entonces la capa se pinta encima de todo
         capaCerca = project(0, 16, Z0).depth > project(0, 16, -2).depth;
@@ -4693,7 +4934,7 @@ body.busy .dropzone { opacity: 0.7; }
         const w = ms.max[0] - ms.min[0], h = ms.max[1] - ms.min[1], d = ms.max[2] - ms.min[2];
         const uvs = carasUV(box.uv, w, h, d);
         CARAS.forEach((c) => {
-          const pts = esquinas(c, b).map((q) => project(q[0], q[1], q[2]));
+          const pts = esquinas(c, b).map((q) => proyectarParte(q, box.type));
           const rect = uvs[c.key];
           const col = media(rect[0], rect[1], rect[2], rect[3]);
           if (col.a <= 0.02) return;                       // cara transparente
@@ -4723,7 +4964,7 @@ body.busy .dropzone { opacity: 0.7; }
         const alpha = sel ? 0.30 : 0.13;
         const proyectadas = [];
         CARAS.forEach((c) => {
-          const pts = esquinas(c, base).map((q) => project(q[0], q[1], q[2]));
+          const pts = esquinas(c, base).map((q) => proyectarParte(q, PARTE_DE_ARMADURA[tipo] || 'BODY'));
           proyectadas.push(pts);
           faces.push({
             pts: pts,
@@ -4796,7 +5037,9 @@ body.busy .dropzone { opacity: 0.7; }
 
       canvas._lce3d = { piezas: piezas, dibujadas: dibujadas, escala: scale, alto: H, ancho: W };
     };
-    img.src = skin.thumbUrl;
+    const img = imagenDeSkin(skin.thumbUrl);
+    if (img.complete && img.naturalWidth) dibujar();
+    else img.onload = dibujar;
 
     function b0(tipo, bx) { return armorPieceBox(tipo, bx); }
   }
@@ -4804,7 +5047,7 @@ body.busy .dropzone { opacity: 0.7; }
   /** arrastrar las piezas de armadura en la vista 3D */
   function initArmorDrag(canvas, skin, onChange) {
     // el contexto se actualiza en cada apertura; los listeners se ponen una sola vez
-    canvas._lceCtx = { skin: skin, onChange: onChange, sel: () => armorSeleccionada };
+    canvas._lceCtx = Object.assign(canvas._lceCtx || {}, { skin: skin, onChange: onChange, sel: () => armorSeleccionada });
     if (canvas._lceBound) return;
     canvas._lceBound = true;
     let activa = null;
@@ -4825,12 +5068,26 @@ body.busy .dropzone { opacity: 0.7; }
       dentro.sort((a, b) => (a.x1 - a.x0) * (a.y1 - a.y0) - (b.x1 - b.x0) * (b.y1 - b.y0));
       return dentro[0] || null;
     };
+    let girando = null;
     canvas.addEventListener('pointerdown', (ev) => {
       if (!canvas._lceCtx) return;
       const p = punto(ev);
+      // si el dedo está sobre la pieza elegida en la lista, la mueve; si está sobre otra, esa;
+      // y si no hay ninguna pieza debajo, gira el muñeco
       const elegida = canvas._lceCtx.sel && canvas._lceCtx.sel();
-      const pieza = elegida ? { tipo: elegida } : piezaEn(p);
-      if (!pieza) return;
+      const rectSel = elegida && canvas._lce3d
+        ? canvas._lce3d.piezas.find((z) => z.tipo === elegida) : null;
+      const dentroSel = rectSel && p.x >= rectSel.x0 && p.x <= rectSel.x1 && p.y >= rectSel.y0 && p.y <= rectSel.y1;
+      const pieza = dentroSel ? { tipo: elegida } : piezaEn(p);
+      if (!pieza) {
+        // no hay armadura debajo: girar el muñeco (ratón o dedo)
+        if (!canvas._lceCtx.rotar) return;
+        girando = { x: ev.clientX, y: ev.clientY };
+        canvas.classList.add('arrastrando');
+        canvas.setPointerCapture(ev.pointerId);
+        ev.preventDefault();
+        return;
+      }
       activa = pieza.tipo;
       y0 = ev.clientY;
       off0 = Number((canvas._lceCtx.skin.offsets || {})[activa]) || 0;
@@ -4841,6 +5098,12 @@ body.busy .dropzone { opacity: 0.7; }
     });
     canvas.addEventListener('pointermove', (ev) => {
       const p = punto(ev);
+      if (girando) {
+        canvas._lceCtx.rotar(ev.clientX - girando.x, ev.clientY - girando.y);
+        girando = { x: ev.clientX, y: ev.clientY };
+        ev.preventDefault();
+        return;
+      }
       if (!activa) {
         canvas.style.cursor = piezaEn(p) ? 'ns-resize' : 'default';
         return;
@@ -4853,6 +5116,12 @@ body.busy .dropzone { opacity: 0.7; }
       ev.preventDefault();
     });
     const fin = (ev) => {
+      if (girando) {
+        girando = null;
+        canvas.classList.remove('arrastrando');
+        try { canvas.releasePointerCapture(ev.pointerId); } catch (e) { /* noop */ }
+        return;
+      }
       if (!activa) return;
       activa = null;
       canvas.style.cursor = 'default';

@@ -317,6 +317,41 @@ ignora con su aviso.
 Un consejo: las **capas** (`HEADWEAR`, `JACKET`, `SLEEVE0`…) son para pieles de jugador y se ocultan con la
 armadura; para un personaje con geometría propia usa las partes **base**, que son las que se animan.
 
+### Verlo moverse: andar, correr, nadar… y girarlo con el dedo
+
+La vista 3D no es una foto: en el modal del muñeco hay una fila **Movimiento** para ver cómo quedaría la
+skin en el juego. Al elegir un movimiento empieza solo (y se para con **⏸ Parar**):
+
+| Movimiento | Qué hace |
+|---|---|
+| **Quieto** | de pie, la cabeza gira un poco a los lados |
+| **Andando** | piernas y brazos alternos, con el balanceo del cuerpo |
+| **Corriendo** | lo mismo, más rápido y con el torso echado hacia delante |
+| **Nadando** | el cuerpo se tumba, los brazos bogan y las piernas patalean |
+| **Saltando** | los brazos van arriba y las piernas se abren |
+| **Agachado** | el cuerpo baja y la cabeza se echa atrás para mirar |
+| **Saludando** | un brazo sube y saluda con la mano |
+
+![Controles de movimiento y vista 3D girando](capturas/animacion.png)
+
+- **Velocidad**: acelera o frena el movimiento (útil para ver un fotograma concreto).
+- **↻ Girar**: el muñeco da vueltas solo, para verlo de todos los lados.
+- **Arrastrar sobre el muñeco** (ratón o dedo) lo gira a la derecha/izquierda y lo inclina arriba/abajo;
+  la barra **Girar** de arriba hace lo mismo con el teclado.
+
+Cada caja gira alrededor del **hombro o la cadera** de su parte (`BOX_PIVOT`: hombro a `y=22`, cadera a
+`y=12`), no alrededor de su propio centro, que es lo que hace el juego: por eso el brazo bascula y la pierna
+da la zancada. Esto vale para las tres cosas a la vez — el **modelo estándar**, un **modelo propio**
+(`.bbmodel`) y la **armadura** encima, que se mueve pegada a su parte: el casco con la cabeza, la bota con
+el pie, la hombrera con el brazo.
+
+Un aviso importante: esto es **una previsualización**, no una animación exportada. El `.pck` no lleva
+animaciones; lo que se guarda es a qué parte pertenece cada caja y el `ANIM` de la skin, y con eso el juego
+mueve el muñeco a su manera (andar, correr, nadar, saltar, comer, sentarse…). Si un cubo está en la parte
+equivocada se verá quieto al andar: para eso está el selector **Parte** de la sección anterior.
+
+![Siete posturas de la misma skin](capturas/posturas.png)
+
 ### Editar la geometría y bajar el `.bbmodel`
 
 En la vista **3D** hay un panel plegable **Geometría: N cajas · `.bbmodel`** con una fila por caja del modelo:
@@ -504,7 +539,9 @@ python3 build.py
   intacto, export `.zip` y reimportación.
 - **E2E del modelo 3D**: `.bbmodel` sintético del modelo de jugador (con la cabeza agrandada y un cubo
   inservible), comprobación de las 12 cajas `BOX` contra los valores estándar de LCE, inflado propio →
-  `XMLVERSION 3`, detección slim, redondeo de decimales, vista 3D pintada y ciclo importar → exportar sin perder la geometría.
+  `XMLVERSION 3`, detección slim, redondeo de decimales, vista 3D pintada, ciclo importar → exportar sin
+  perder la geometría, arrastre de la armadura, detección de partes en cubos sin nombre y **animaciones**
+  (los siete movimientos mueven el dibujo, arrastrar gira el modelo y al cerrar se para el bucle).
 - **Auditoría de parámetros** (`node test/params.js`): **86 comprobaciones** sobre un `.pck` generado —
   cabecera, LUT, codificación de strings, `.loc`, `ANIM` por modelo, `GAME_FLAGS`/`FREE`, rango de IDs,
   tamaño de PNG y las reglas de `BOX` (pivotes, eje Y, espejo, tipos válidos).

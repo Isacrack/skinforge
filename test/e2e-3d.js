@@ -828,6 +828,83 @@ function pngDataUrl(file) {
     'el .pck lleva cada caja en su parte (para que se mueva): ' + tiposPartes.slice(-6).join(','));
   console.log('  ✓ cubos sin nombre: detectados HEAD/BODY/ARM/LEG y corregibles caja a caja');
 
+  /* 10. animaciones: ver al muñeco andar / correr / nadar y girarlo arrastrando */
+  await page.locator('.skin-card').last().locator('.doll-btn').click();
+  await page.waitForFunction(() => document.querySelector('#dollCanvas')._lce3d, null, { timeout: 15000 });
+  await page.waitForTimeout(400);
+
+  const anims = await page.evaluate(() => [...document.querySelectorAll('#animSel option')]
+    .map((o) => ({ v: o.value, t: o.textContent })));
+  const valores = anims.map((a) => a.v);
+  assert.ok(valores.indexOf('andar') >= 0 && valores.indexOf('correr') >= 0 && valores.indexOf('nadar') >= 0,
+    'el selector trae andar, correr y nadar: ' + valores.join(','));
+  assert.ok(anims.length >= 6, 'hay más de seis movimientos: ' + anims.length);
+
+  // instante del lienzo en una cadena, para comparar fotogramas
+  const foto = () => page.evaluate(() => {
+    const c = document.querySelector('#dollCanvas');
+    return c.getContext('2d').getImageData(0, 0, c.width, c.height).data.join(',');
+  });
+  const distintos = (a, b) => {
+    const x = a.split(','), y = b.split(',');
+    let n = 0;
+    for (let i = 3; i < x.length; i += 16) if (x[i] !== y[i]) n++;
+    return n;
+  };
+
+  const parado = await foto();
+  await page.selectOption('#animSel', 'andar');   // elegir un movimiento ya lo pone en marcha
+  await page.waitForTimeout(120);
+  const cls = await page.getAttribute('#animPlay', 'class');
+  assert.ok(/on/.test(cls || ''), 'el botón se queda en «parar» mientras reproduce: ' + cls);
+  await page.waitForTimeout(220);
+  const caminando = await foto();
+  const movidos = distintos(parado, caminando);
+  assert.ok(movidos > 150, 'al andar el muñeco cambia (' + movidos + ' muestras distintas)');
+
+  // postura distinta para cada movimiento
+  await page.selectOption('#animSel', 'nadar');
+  await page.waitForTimeout(260);
+  const nadando = await foto();
+  assert.ok(distintos(caminando, nadando) > 150, 'nadar no se parece a andar');
+  await page.selectOption('#animSel', 'correr');
+  await page.waitForTimeout(200);
+  assert.ok(distintos(nadando, await foto()) > 150, 'correr no se parece a nadar');
+
+  // girar arrastrando sobre el lienzo (ratón abajo-derecha → sube el giro)
+  const yawAntes = await page.evaluate(() => document.querySelector('#yawRange').value);
+  await page.locator('#dollCanvas').scrollIntoViewIfNeeded();   // el modal pudo quedar desplazado antes
+  await page.waitForTimeout(150);
+  const caja = await page.locator('#dollCanvas').boundingBox();
+  await page.mouse.move(caja.x + caja.width * 0.2, caja.y + caja.height * 0.15);
+  await page.mouse.down();
+  await page.mouse.move(caja.x + caja.width * 0.8, caja.y + caja.height * 0.15, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForTimeout(150);
+  const yawDespues = await page.evaluate(() => document.querySelector('#yawRange').value);
+  assert.notStrictEqual(yawDespues, yawAntes, 'arrastrar gira el modelo (' + yawAntes + ' → ' + yawDespues + ')');
+
+  // parar con el botón y cerrar: no debe quedar ningún bucle suelto
+  await page.click('#animPlay');
+  await page.waitForTimeout(120);
+  assert.ok(!/on/.test(await page.getAttribute('#animPlay', 'class') || ''), 'el botón vuelve a «reproducir»');
+  await page.click('#animPlay');
+  await page.waitForTimeout(200);
+  await page.click('#dollClose');
+  await page.waitForTimeout(250);
+  const repintados = await page.evaluate(() => new Promise((res) => {
+    const c = document.querySelector('#dollCanvas');
+    const orig = CanvasRenderingContext2D.prototype.clearRect;
+    let n = 0;
+    CanvasRenderingContext2D.prototype.clearRect = function (...a) {
+      if (this.canvas === c) n++;
+      return orig.apply(this, a);
+    };
+    setTimeout(() => { CanvasRenderingContext2D.prototype.clearRect = orig; res(n); }, 500);
+  }));
+  assert.strictEqual(repintados, 0, 'al cerrar se para la animación (repintados: ' + repintados + ')');
+  console.log('  ✓ animaciones: ' + valores.join(' / ') + ' y arrastre para girar');
+
   assert.deepStrictEqual(errors, [], 'errores de consola: ' + errors.join(' | '));
   console.log('\nE2E MODELO 3D OK');
   await browser.close();
