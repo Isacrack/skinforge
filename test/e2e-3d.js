@@ -367,11 +367,14 @@ function pngDataUrl(file) {
   await page.waitForFunction(() => /Modelo:/.test(document.querySelector('.skin-card')?.textContent || ''), null, { timeout: 15000 });
   await page.click('.skin-card .doll-btn');
   await page.waitForTimeout(400);
-  assert.strictEqual(await page.locator('input[data-off]').count(), 9, 'nueve piezas de armadura movibles');
-  await page.fill('input[data-off="HELMET"]', '-2');
-  await page.dispatchEvent('input[data-off="HELMET"]', 'change');
-  await page.fill('input[data-off="CHEST"]', '1');
-  await page.dispatchEvent('input[data-off="CHEST"]', 'change');
+  assert.strictEqual(await page.locator('.off[data-off]').count(), 9, 'nueve piezas de armadura movibles');
+  assert.strictEqual(await page.locator('#dollOverlay input[type=number]').count(), 0,
+    'el modal no tiene ni un campo de coordenadas: todo se arrastra');
+  // sin números: se mueve con el teclado (flechas) o arrastrando la pieza en la vista
+  await page.focus('.off[data-off="HELMET"]');
+  for (let k = 0; k < 2; k++) await page.keyboard.press('ArrowUp');       // -2
+  await page.focus('.off[data-off="CHEST"]');
+  await page.keyboard.press('ArrowDown');                                // +1
   await page.check('#hideArmorChk');
   await page.check('#unfairChk');
   await page.locator('#dollOverlay .modal').screenshot({ path: path.join(OUT, 'shot-offsets.png') });
@@ -395,8 +398,10 @@ function pngDataUrl(file) {
   await page.waitForFunction(() => document.querySelectorAll('.skin-card').length === 1, null, { timeout: 15000 });
   await page.click('.skin-card .doll-btn');
   await page.waitForTimeout(400);
-  assert.strictEqual(await page.inputValue('input[data-off="HELMET"]'), '-2', 'el OFFSET se relee');
-  assert.strictEqual(await page.inputValue('input[data-off="CHEST"]'), '1');
+  const offsetHelmet = await page.textContent('.off[data-off="HELMET"] [data-val]');
+  const offsetChest = await page.textContent('.off[data-off="CHEST"] [data-val]');
+  assert.strictEqual(offsetHelmet, '-2', 'el OFFSET se relee');
+  assert.strictEqual(offsetChest, '+1');
   assert.ok(await page.isChecked('#hideArmorChk'), 'el flag de ocultar armadura se relee');
   assert.ok(await page.isChecked('#unfairChk'), 'el flag de Battle Mode se relee');
   await page.click('#dollClose');
@@ -461,6 +466,8 @@ function pngDataUrl(file) {
   assert.strictEqual(soloModelo, 0, 'por defecto la vista muestra SOLO el modelo (sin cajas de armadura)');
   await page.check('#showArmorChk');
   await page.waitForTimeout(500);
+  await page.locator('#dollCanvas').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(150);
   const vista = await page.evaluate(() => {
     const c = document.querySelector('#dollCanvas');
     const st = c._lce3d;
@@ -481,7 +488,7 @@ function pngDataUrl(file) {
   await page.mouse.move(vista.x, vista.y - 27, { steps: 8 });
   await page.mouse.up();
   await page.waitForTimeout(200);
-  const cascoVal = Number(await page.inputValue('input[data-off="HELMET"]'));
+  const cascoVal = Number(await page.textContent('.off[data-off="HELMET"] [data-val]'));
   assert.ok(cascoVal < 0, 'arrastrar hacia arriba da OFFSET negativo (sube la armadura): ' + cascoVal);
   const selMarcada = await page.locator('.off.sel').count();
   assert.strictEqual(selMarcada, 1, 'la pieza arrastrada queda marcada en la lista');
@@ -505,6 +512,8 @@ function pngDataUrl(file) {
   await page.waitForTimeout(800);
   await page.check('#showArmorChk');
   await page.waitForTimeout(500);
+  await page.locator('#dollCanvas').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(150);
   const base3d = await page.evaluate(() => {
     const c = document.querySelector('#dollCanvas');
     const st = c._lce3d;
@@ -514,8 +523,10 @@ function pngDataUrl(file) {
   });
   assert.strictEqual(base3d.piezas, 9, 'una skin sin modelo también enseña las 9 piezas');
   // elegir el peto en la lista (la cintura se solapa con él en la vista)
-  await page.click('.off:has(input[data-off="CHEST"])');
+  await page.click('.off[data-off="CHEST"]');
   await page.waitForTimeout(250);
+  await page.locator('#dollCanvas').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(150);
   assert.strictEqual(await page.locator('.off.sel').count(), 1, 'la fila elegida queda marcada');
   assert.ok(await page.isChecked('#showArmorChk'), 'al elegir una pieza se enciende la vista de armadura');
   await page.mouse.move(base3d.x, base3d.y);
@@ -523,7 +534,7 @@ function pngDataUrl(file) {
   await page.mouse.move(base3d.x, base3d.y + 20, { steps: 6 });   // bajar el peto
   await page.mouse.up();
   await page.waitForTimeout(200);
-  const petoVal = Number(await page.inputValue('input[data-off="CHEST"]'));
+  const petoVal = Number(await page.textContent('.off[data-off="CHEST"] [data-val]'));
   assert.ok(petoVal > 0, 'arrastrar hacia abajo sube el valor (baja la pieza): ' + petoVal);
   await page.click('#dollClose');
   console.log('  ✓ skins sin modelo: armadura movible en 3D (peto ' + petoVal + ')');
@@ -667,13 +678,15 @@ function pngDataUrl(file) {
   await page.waitForTimeout(200);
   assert.strictEqual(await page.locator('.geo-row').count(), 12, 'el modelo estándar tiene 12 cajas editables');
 
+  // el ancho de la cabeza: Mayús+flecha derecha (no hay campos de números)
   const anchoNuevo = await page.evaluate(() => {
-    const i = document.querySelector('.geo-row input[data-act="w"]');
-    const w2 = String(Number(i.value) + 1);
-    i.value = w2;
-    i.dispatchEvent(new Event('input', { bubbles: true }));
-    return Number(w2);
+    const t = document.querySelector('.geo-row [data-size]').textContent;
+    return Number(t.split('×')[0]) + 1;
   });
+  await page.locator('.geo-row').first().click();
+  await page.waitForTimeout(200);
+  await page.focus('.geo-row');
+  await page.keyboard.press('Shift+ArrowRight');
   await page.waitForTimeout(400);
   const metaGeo = await page.textContent('#dollMeta');
   assert.ok(/modelo 3D: 12 cajas/.test(metaGeo), 'el modal sabe que hay modelo propio: ' + metaGeo);
@@ -904,6 +917,122 @@ function pngDataUrl(file) {
   }));
   assert.strictEqual(repintados, 0, 'al cerrar se para la animación (repintados: ' + repintados + ')');
   console.log('  ✓ animaciones: ' + valores.join(' / ') + ' y arrastre para girar');
+
+  /* 11. pivotes arrastrables y geometría sin un solo campo de coordenadas */
+  await page.click('#clearBtn');
+  await page.waitForFunction(() => document.querySelectorAll('.skin-card').length === 0, null, { timeout: 5000 });
+  await page.setInputFiles('#fileInput', modelPath);
+  await page.waitForFunction(() => /Modelo:/.test(document.querySelector('.skin-card')?.textContent || ''), null, { timeout: 15000 });
+  await page.click('.skin-card .doll-btn');
+  await page.waitForFunction(() => document.querySelector('#dollCanvas')._lce3d, null, { timeout: 15000 });
+  await page.waitForTimeout(400);
+
+  assert.strictEqual(await page.locator('#dollOverlay input[type=number]').count(), 0,
+    'ni un campo de coordenadas en todo el modal');
+  assert.strictEqual(await page.locator('#dollModes [data-modo]').count(), 3,
+    'tres modos de arrastre: girar, cajas y pivotes');
+  assert.deepStrictEqual(await page.evaluate(() => [...document.querySelectorAll('.piv')].map((p) => p.dataset.pivote)),
+    ['HEAD', 'BODY', 'ARM0', 'ARM1', 'LEG0', 'LEG1'], 'una fila de pivote por carpeta');
+
+  // el pivote del brazo izquierdo, arrastrado con el ratón (como haría el dedo)
+  await page.click('#modoPivote');
+  await page.waitForTimeout(300);
+  const cruz = await page.evaluate(() => {
+    const c = document.querySelector('#dollCanvas');
+    const r = c.getBoundingClientRect();
+    const k = c.width / r.width;
+    const m = c._lce3d.pivotes.ARM1;
+    return { x: r.left + m.x / k, y: r.top + m.y / k, pivote: m.pivote };
+  });
+  assert.deepStrictEqual(cruz.pivote, [5, 22, 0], 'el brazo izquierdo gira en el hombro del juego: ' + cruz.pivote);
+  await page.mouse.move(cruz.x, cruz.y);
+  await page.mouse.down();
+  await page.mouse.move(cruz.x, cruz.y - 24, { steps: 6 });
+  await page.mouse.up();
+  await page.waitForTimeout(400);
+  const pivoteNuevo = await page.evaluate(() => document.querySelector('#dollCanvas')._lce3d.pivotes.ARM1.pivote);
+  assert.ok(pivoteNuevo[1] > 22, 'arrastrar la cruz sube el pivote: ' + pivoteNuevo.join(','));
+
+  // el pivote propio se guarda en el origin de la carpeta del .bbmodel
+  await page.evaluate(() => { document.querySelector('#geoDetails').open = true; });
+  const [dlPiv] = await Promise.all([page.waitForEvent('download'), page.click('#geoDl')]);
+  const rutaPiv = path.join(OUT, 'pivotes.bbmodel');
+  await dlPiv.saveAs(rutaPiv);
+  const modeloPiv = JSON.parse(fs.readFileSync(rutaPiv, 'utf8'));
+  const grupoBrazo = modeloPiv.groups.find((g) => g.name === 'left_arm');
+  assert.strictEqual(grupoBrazo.origin[1], pivoteNuevo[1],
+    'el .bbmodel lleva el pivote en el origin de su carpeta: ' + grupoBrazo.origin.join(','));
+  const brazoAntes = modeloPiv.elements.filter((e) => e.name === 'arm1').map((e) => e.from[1]);
+
+  // «Cuadrar»: mueve las cajas de esa carpeta para que el juego gire donde tú pusiste
+  await page.click('.piv [data-cuadrar]');
+  await page.waitForTimeout(500);
+  const pivoteTrasCuadrar = await page.evaluate(() => document.querySelector('#dollCanvas')._lce3d.pivotes.ARM1.pivote);
+  assert.deepStrictEqual(pivoteTrasCuadrar, [5, 22, 0], 'al cuadrar, el pivote vuelve al del juego');
+  const [dlCuad] = await Promise.all([page.waitForEvent('download'), page.click('#geoDl')]);
+  const rutaCuad = path.join(OUT, 'pivotes-cuadrados.bbmodel');
+  await dlCuad.saveAs(rutaCuad);
+  const modeloCuad = JSON.parse(fs.readFileSync(rutaCuad, 'utf8'));
+  const brazoDespues = modeloCuad.elements.filter((e) => e.name === 'arm1').map((e) => e.from[1]);
+  assert.deepStrictEqual(brazoDespues, brazoAntes.map((v) => v - (pivoteNuevo[1] - 22)),
+    'las cajas del brazo bajan lo mismo que subió el pivote: ' + brazoAntes + ' → ' + brazoDespues);
+
+  // modo «cajas»: mover arrastrando y estirar con los tiradores
+  await page.click('#modoCaja');
+  await page.locator('#dollCanvas').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(200);
+  const cajaAntes = await page.evaluate(() => {
+    const c = document.querySelector('#dollCanvas');
+    const st = c._lce3d;
+    const cabeza = st.cajas.find((z) => z.tipo === 'HEAD');
+    const r = c.getBoundingClientRect();
+    const k = c.width / r.width;
+    return {
+      centro: { x: r.left + (cabeza.x0 + cabeza.x1) / 2 / k, y: r.top + (cabeza.y0 + cabeza.y1) / 2 / k },
+      alto: cabeza.y1 - cabeza.y0
+    };
+  });
+  await page.mouse.move(cajaAntes.centro.x, cajaAntes.centro.y);
+  await page.mouse.down();
+  await page.mouse.move(cajaAntes.centro.x, cajaAntes.centro.y - 20, { steps: 6 });
+  await page.mouse.up();
+  await page.waitForTimeout(400);
+  const [dlCaja] = await Promise.all([page.waitForEvent('download'), page.click('#geoDl')]);
+  const rutaCaja = path.join(OUT, 'caja-arrastrada.bbmodel');
+  await dlCaja.saveAs(rutaCaja);
+  const modeloCaja = JSON.parse(fs.readFileSync(rutaCaja, 'utf8'));
+  const cabezaMov = modeloCaja.elements.find((e) => e.name === 'head');
+  assert.ok(cabezaMov, 'la cabeza sigue en el .bbmodel');
+  const cabezaAntesHead = modeloCuad.elements.find((e) => e.name === 'head');
+  assert.ok(cabezaMov.from[1] > cabezaAntesHead.from[1],
+    'arrastrar la caja la sube (Y ' + cabezaAntesHead.from[1] + ' → ' + cabezaMov.from[1] + ')');
+  assert.strictEqual(cabezaMov.from[0], cabezaAntesHead.from[0], 'y no se va de lado');
+
+  // tirador de ancho: se estira hacia la derecha
+  await page.locator('#dollCanvas').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(200);
+  const tirador = await page.evaluate(() => {
+    const c = document.querySelector('#dollCanvas');
+    const r = c.getBoundingClientRect();
+    const k = c.width / r.width;
+    return { x: r.left + c._lce3d.tiradores.w.x / k, y: r.top + c._lce3d.tiradores.w.y / k };
+  });
+  await page.mouse.move(tirador.x, tirador.y);
+  await page.mouse.down();
+  await page.mouse.move(tirador.x + 40, tirador.y, { steps: 6 });
+  await page.mouse.up();
+  await page.waitForTimeout(400);
+  const [dlAncho] = await Promise.all([page.waitForEvent('download'), page.click('#geoDl')]);
+  const rutaAncho = path.join(OUT, 'caja-estriada.bbmodel');
+  await dlAncho.saveAs(rutaAncho);
+  const modeloAncho = JSON.parse(fs.readFileSync(rutaAncho, 'utf8'));
+  const cabezaAncha = modeloAncho.elements.find((e) => e.name === 'head');
+  assert.ok(cabezaAncha.to[0] - cabezaAncha.from[0] > cabezaMov.to[0] - cabezaMov.from[0],
+    'el tirador A estira el ancho: ' + (cabezaMov.to[0] - cabezaMov.from[0]) + ' → ' + (cabezaAncha.to[0] - cabezaAncha.from[0]));
+
+  await page.locator('#dollOverlay .modal').screenshot({ path: path.join(OUT, 'shot-pivotes.png') });
+  await page.click('#dollClose');
+  console.log('  ✓ pivotes arrastrables, «cuadrar» con el juego y cajas movidas/estiradas sin números');
 
   assert.deepStrictEqual(errors, [], 'errores de consola: ' + errors.join(' | '));
   console.log('\nE2E MODELO 3D OK');

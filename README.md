@@ -317,6 +317,34 @@ ignora con su aviso.
 Un consejo: las **capas** (`HEADWEAR`, `JACKET`, `SLEEVE0`…) son para pieles de jugador y se ocultan con la
 armadura; para un personaje con geometría propia usa las partes **base**, que son las que se animan.
 
+### Pivotes: dónde gira cada carpeta
+
+Cada caja se mueve con **su** carpeta, y cada carpeta gira alrededor de un punto: el **hombro** (`y=22`) en
+los brazos, la **cadera** (`y=12`) en las piernas. En un modelo de jugador eso cae solo, pero en un
+personaje con hombros a otra altura el brazo giraría «despegado».
+
+En el modo **Pivotes** aparecen **cruces azules** en cada punto de giro (cabeza, cuerpo, brazos, piernas).
+Tocas una cruz y la arrastras al hombro o la cadera de **tu** geometría: la cruz se queda en naranja y
+desde ese momento la animación de la página gira por ahí, y el `.bbmodel` que descargas lleva ese punto como
+`origin` de la carpeta (así en Blockbench también rota bien).
+
+![Pivotes de cada carpeta y tiradores de la caja elegida](capturas/pivotes.png)
+
+**Lo que no se puede:** el `.pck` no tiene pivotes — el juego gira siempre en el hombro y la cadera del
+modelo estándar. Por eso, cuando un pivote es tuyo, su fila ofrece **Cuadrar**: mueve las cajas de esa
+carpeta lo justo (te dice cuánto antes de hacerlo) para que el giro del juego caiga donde tú lo pusiste y
+la previsualización y la PS3 se comporten igual. La parte queda dibujada ahí; es el precio de que el
+formato no guarde el pivote.
+
+| Botón | Qué hace |
+|---|---|
+| **Ver** | enseña u oculta las cruces sin salir del modo Girar |
+| **Juego** | vuelve a los pivotes del juego (hombro y cadera estándar) |
+| **Cuadrar** | (solo si el pivote es tuyo) desplaza las cajas de esa carpeta al pivote del juego |
+
+Un `.bbmodel` que traiga `origin` propio en sus grupos importa esos pivotes automáticamente (el `[0,24,0]`
+por defecto de Blockbench se ignora, que es lo que traen casi todos los modelos).
+
 ### Verlo moverse: andar, correr, nadar… y girarlo con el dedo
 
 La vista 3D no es una foto: en el modal del muñeco hay una fila **Movimiento** para ver cómo quedaría la
@@ -354,15 +382,21 @@ equivocada se verá quieto al andar: para eso está el selector **Parte** de la 
 
 ### Editar la geometría y bajar el `.bbmodel`
 
-En la vista **3D** hay un panel plegable **Geometría: N cajas · `.bbmodel`** con una fila por caja del modelo:
+Debajo de la vista **3D** hay un selector de modo con tres botones — **Girar**, **Cajas** y **Pivotes** — y
+un panel plegable **Geometría: N cajas · `.bbmodel`** con una fila por caja. En toda la página **no hay ni un
+campo de coordenadas**: las cajas y los pivotes se cogen con el ratón o el dedo y se arrastran.
 
-| Campo | Qué es | Ejemplo |
-|---|---|---|
-| **An / Al / Fd** | ancho, alto y fondo de la caja | `8 8 8` para la cabeza |
-| **X / Y / Z** | posición (el mismo `X Y Z` del parámetro `BOX`) | `-4 -8 -4` |
-| **Inf** | inflado, en píxeles (`0` = ninguno) | `1` = casco un poco más grande |
-| **✕** | borra esa caja | |
-| **＋ Añadir caja** | añade una caja eligiendo la parte (`HEAD`, `HEADWEAR`, `BODY`, `JACKET`, `ARM0`, `SLEEVE0`, `PANTS0`…) | |
+| En el modo | Qué se hace |
+|---|---|
+| **Cajas** | toca una caja y **arrástrala** para moverla (horizontal = eje X, vertical = eje Y) |
+| **Cajas** + ⬚ **Fondo** | con el botón «Fondo» encendido (o `Mayús` al arrastrar) la caja se mueve hacia delante/atrás (eje Z) |
+| tirador **A** | estira el **ancho** de la caja elegida (arrástralo hacia fuera) |
+| tirador **H** | estira el **alto** |
+| tirador **F** | estira el **fondo** (profundidad) |
+| **＋ / −** de la fila | sube o baja el **inflado** (0-4 px), como el `inflado` del `BOX` |
+| **✕** de la fila | borra esa caja |
+| **＋ Añadir caja** | añade una caja eligiendo la parte (`HEAD`, `HEADWEAR`, `BODY`, `JACKET`, `ARM0`, `SLEEVE0`, `PANTS0`…) |
+| teclado | con una fila enfocada: **flechas** mueven la caja, **Mayús+flechas** la estiran |
 
 Los cambios se aplican al momento (se ve en el muñeco y en el `.pck` exportado), y **Descargar `.bbmodel`**
 saca la geometría tal como la has dejado, en formato Blockbench 5.0 y con el *outliner* en seis carpetas
@@ -417,7 +451,9 @@ en cualquier punto de la vista.
 Funciona **con cualquier skin**, tenga `.bbmodel` o no: si no hay modelo se dibuja el jugador estándar.
 Las piezas se dimensionan a partir de tus cajas, así que ves si el casco cubre o no tu cabeza de 10 px.
 
-**Con el número:** un campo por pieza en el bloque «Mover la armadura», **negativo = más arriba**.
+**Sin números:** en el bloque «Mover la armadura» hay una pieza por botón (casco, peto, hombrera…) con su
+valor al lado; **arrastras la pieza en la vista 3D** y el valor cambia solo (**negativo = más arriba**).
+Si prefieres el teclado, marca la pieza con `Tab` y mueve con las flechas (`Supr` la deja en 0).
 
 ```
 OFFSET  HELMET Y -2      ← casco dos unidades más arriba (cabeza de 10 px)
@@ -540,8 +576,10 @@ python3 build.py
 - **E2E del modelo 3D**: `.bbmodel` sintético del modelo de jugador (con la cabeza agrandada y un cubo
   inservible), comprobación de las 12 cajas `BOX` contra los valores estándar de LCE, inflado propio →
   `XMLVERSION 3`, detección slim, redondeo de decimales, vista 3D pintada, ciclo importar → exportar sin
-  perder la geometría, arrastre de la armadura, detección de partes en cubos sin nombre y **animaciones**
-  (los siete movimientos mueven el dibujo, arrastrar gira el modelo y al cerrar se para el bucle).
+  perder la geometría, arrastre de la armadura, detección de partes en cubos sin nombre, **animaciones**
+  (los siete movimientos mueven el dibujo, arrastrar gira el modelo y al cerrar se para el bucle) y
+  **edición sin números** (cero campos de coordenadas en el modal, pivote arrastrado que acaba en el
+  `origin` del `.bbmodel`, «Cuadrar» que desplaza las cajas y cajas movidas y estiradas a mano).
 - **Auditoría de parámetros** (`node test/params.js`): **86 comprobaciones** sobre un `.pck` generado —
   cabecera, LUT, codificación de strings, `.loc`, `ANIM` por modelo, `GAME_FLAGS`/`FREE`, rango de IDs,
   tamaño de PNG y las reglas de `BOX` (pivotes, eje Y, espejo, tipos válidos).

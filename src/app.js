@@ -697,12 +697,14 @@
     const off = document.createElement('div');
     off.className = 'armor-offsets';
     off.innerHTML =
-      '<div class="be-head"><span>Mover la armadura <code>OFFSET</code> (negativo = más arriba):</span></div>' +
+      '<div class="be-head"><span>Mover la armadura <code>OFFSET</code>: tócala en la vista 3D y arrástrala</span></div>' +
       '<div class="off-grid">' +
-        PIEZAS_ARMADURA.map(([tipo, txt]) =>
-          '<label class="off"><span>' + txt + '</span>' +
-          '<input type="number" step="1" inputmode="numeric" data-off="' + tipo + '" value="' +
-          Math.round(Number((skin.offsets || {})[tipo]) || 0) + '"></label>').join('') +
+        PIEZAS_ARMADURA.map(([tipo, txt]) => {
+          const val = Math.round(Number((skin.offsets || {})[tipo]) || 0);
+          return '<div class="off" data-off="' + tipo + '" tabindex="0" role="button" ' +
+            'title="Toca la pieza en la vista 3D y arrástrala (arriba/abajo). Aquí puedes marcarla para moverla.">' +
+            '<span>' + txt + '</span><b data-val>' + (val ? (val > 0 ? '+' + val : val) : '0') + '</b></div>';
+        }).join('') +
       '</div>' +
       '<div class="be-flags">' +
         '<label class="arm"><input type="checkbox" id="hideArmorChk"' + (skin.hideArmor ? ' checked' : '') +
@@ -724,11 +726,17 @@
     host.appendChild(off);
 
     skin.offsets = skin.offsets || {};
+    const ponerOffset = (tipo, valor) => {
+      const v = Math.round(valor) || 0;
+      if (v) skin.offsets[tipo] = v; else delete skin.offsets[tipo];
+      const fila = document.querySelector('.off[data-off="' + tipo + '"] [data-val]');
+      if (fila) fila.textContent = v ? (v > 0 ? '+' + v : String(v)) : '0';
+      if (repintar3D) repintar3D();
+      render();
+    };
     off.querySelectorAll('.off').forEach((fila) => {
-      const inp = fila.querySelector('input[data-off]');
-      fila.addEventListener('click', (ev) => {
-        if (ev.target === inp) return;
-        armorSeleccionada = armorSeleccionada === inp.dataset.off ? null : inp.dataset.off;
+      fila.addEventListener('click', () => {
+        armorSeleccionada = armorSeleccionada === fila.dataset.off ? null : fila.dataset.off;
         const chkArmor = $('#showArmorChk');
         if (armorSeleccionada && chkArmor && !chkArmor.checked) {
           chkArmor.checked = true;
@@ -736,15 +744,13 @@
         }
         if (repintar3D) repintar3D();
       });
-    });
-    off.querySelectorAll('input[data-off]').forEach((inp) => {
-      inp.addEventListener('focus', () => { armorSeleccionada = inp.dataset.off; if (repintar3D) repintar3D(); });
-      inp.addEventListener('change', () => {
-        const v = Math.round(Number(inp.value) || 0);
-        if (v) skin.offsets[inp.dataset.off] = v;
-        else delete skin.offsets[inp.dataset.off];
-        inp.value = String(v);
-        render();
+      // con el teclado: flechas suben/bajan la pieza, Supr la deja en 0
+      fila.addEventListener('keydown', (ev) => {
+        const tipo = fila.dataset.off;
+        const actual = Math.round(Number(skin.offsets[tipo]) || 0);
+        if (ev.key === 'ArrowUp') { ev.preventDefault(); ponerOffset(tipo, actual - 1); }
+        else if (ev.key === 'ArrowDown') { ev.preventDefault(); ponerOffset(tipo, actual + 1); }
+        else if (ev.key === 'Delete' || ev.key === 'Backspace' || ev.key === 'Home') { ev.preventDefault(); ponerOffset(tipo, 0); }
       });
     });
     const hideChk = off.querySelector('#hideArmorChk');
@@ -791,6 +797,12 @@
     let t0 = 0;
     let velocidad = 1;
     let giroAuto = false;
+    // modos de la vista 3D: girar el muñeco, mover una caja o mover un pivote
+    let modo = 'girar';
+    let cajaSel = null;
+    let pivoteSel = 'HEAD';
+    let verPivotes = false;
+    let fondo = false;      // en modo «cajas»: el arrastre mueve en profundidad (Z)
 
     const pasoAnim = (ts) => {
       if (!jugando) return;
@@ -828,6 +840,11 @@
       drawModel3D(c, skin, {
         boxes: boxes,
         selected: sel,
+        modo: modo,
+        cajaSel: cajaSel,
+        verPivotes: modo === 'pivote' || verPivotes,
+        pivoteSel: pivoteSel,
+        pivotes: skin.pivotes,
         base: chkB ? chkB.checked : true,
         capas: chkC ? chkC.checked : true,
         capa: chkCape ? chkCape.checked : true,
@@ -838,9 +855,8 @@
         piezas: verArmadura() ? undefined : []   // la armadura solo si la pides
       });
       repintar3D = () => pintar(armorSeleccionada);
-      document.querySelectorAll('input[data-off]').forEach((inp) => {
-        const fila = inp.closest('.off');
-        if (fila) fila.classList.toggle('sel', inp.dataset.off === sel);
+      document.querySelectorAll('.off[data-off]').forEach((fila) => {
+        fila.classList.toggle('sel', fila.dataset.off === sel);
       });
     };
 
@@ -934,28 +950,268 @@
     }
 
     renderEditor(skin);
-    renderGeo(skin, boxes, () => { pintar(null); actualizarMeta(); });
+    renderGeo(skin, boxes, () => { pintar(null); actualizarMeta(); }, (i) => {
+      cajaSel = i;
+      setModo('caja');
+      marcarCaja();
+      pintar(armorSeleccionada);
+    });
     pintar(null);
 
-    // arrastrar piezas de armadura
-    initArmorDrag(c, skin, (tipo, valor, inicioArrastre) => {
-      armorSeleccionada = tipo;
-      if (inicioArrastre) {
-        pintar(tipo);
-        return;
+    // --- arrastrar en la vista 3D (girar, mover cajas, pivotes y armadura) ---
+    const persistirModelo = () => {
+      if (!skin.model3d) {
+        skin.model3d = { fileName: '(editado en SkinForge)', boxes: boxes, parts: [], warnings: [],
+          xmlVersion: 2, cubes: boxes.length };
       }
-      skin.offsets = skin.offsets || {};
-      if (valor) skin.offsets[tipo] = valor; else delete skin.offsets[tipo];
-      const inp = document.querySelector('input[data-off="' + tipo + '"]');
-      if (inp) inp.value = String(valor);
-      pintar(tipo);
+      skin.model3d.boxes = boxes;
+      skin.model3d.xmlVersion = boxes.some((b) => b.inflate) ? 3 : 2;
+      skin.model3d.cubes = boxes.length;
+      if (skin.pivotes) skin.model3d.pivotes = skin.pivotes;
+    };
+
+    const api = {
+      skin: skin,
+      getModo: () => modo,
+      getCaja: () => cajaSel,
+      setCaja: (i) => {
+        cajaSel = i;
+        marcarCaja();
+        pintar(armorSeleccionada);
+      },
+      getCajaModelo: (i) => {
+        const b = boxes[i];
+        if (!b) return null;
+        const ms = PCK.boxToModelSpace(b);
+        return {
+          min: ms.min.map((v) => Math.round(v)),
+          max: ms.max.map((v) => Math.round(v))
+        };
+      },
+      colocarCaja: (i, min, max) => {
+        const b = boxes[i];
+        if (!b) return;
+        const minL = min.slice(), maxL = max.slice();
+        for (let k = 0; k < 3; k++) if (maxL[k] <= minL[k]) maxL[k] = minL[k] + 1;
+        Object.assign(b, PCK.cubeToBox(b.type, minL, maxL, b.uv, {
+          armor: b.armor, inflate: b.inflate, mirror: b.mirror
+        }));
+        persistirModelo();
+        pintar(armorSeleccionada);
+      },
+      getArmor: () => armorSeleccionada,
+      onArmor: (tipo, valor, inicioArrastre) => {
+        armorSeleccionada = tipo;
+        if (inicioArrastre) {
+          pintar(tipo);
+          marcarArmadura();
+          return;
+        }
+        skin.offsets = skin.offsets || {};
+        if (valor) skin.offsets[tipo] = valor; else delete skin.offsets[tipo];
+        pintar(tipo);
+        marcarArmadura();
+      },
+      rotar: (dx, dy) => c._lceCtx.rotar(dx, dy),
+      getFondo: () => fondo,
+      setPivoteSel: (tipo) => {
+        pivoteSel = tipo;
+        renderPivotes();
+        pintar(armorSeleccionada);
+      },
+      colocarPivote: (tipo, pv) => {
+        skin.pivotes = skin.pivotes || {};
+        skin.pivotes[tipo] = pv.slice();
+        persistirModelo();
+        pintar(armorSeleccionada);
+      },
+      finArrastre: (tipo) => {
+        if (tipo === 'armadura') { marcarArmadura(); render(); return; }
+        persistirModelo();
+        renderPivotes();
+        marcarCaja();
+        actualizarFilasGeo(boxes);
+        render();
+      }
+    };
+    initDrag3D(c, api);
+
+    // botones de modo
+    const modoBtns = Array.from(document.querySelectorAll('#dollModes [data-modo]'));
+    const setModo = (m) => {
+      modo = m;
+      modoBtns.forEach((b) => {
+        const act = b.dataset.modo === m;
+        b.classList.toggle('ghost', !act);
+        b.classList.toggle('on', act);
+      });
+      const hint = $('#modoHint');
+      if (hint) {
+        hint.innerHTML = m === 'girar'
+          ? 'arrastra para girar · las piezas azules de armadura se mueven'
+          : m === 'caja'
+            ? 'toca una caja y arrástrala · <b>A</b> ancho · <b>H</b> alto · <b>F</b> fondo'
+            : 'toca un pivote y arrástralo al hombro o la cadera';
+      }
+      pintar(armorSeleccionada);
+    };
+    modoBtns.forEach((b) => { b.onclick = () => setModo(b.dataset.modo); });
+    setModo('girar');
+
+    const btnFondo = $('#cajaFondo');
+    if (btnFondo) {
+      btnFondo.onclick = () => {
+        fondo = !fondo;
+        btnFondo.classList.toggle('on', fondo);
+        btnFondo.classList.toggle('ghost', !fondo);
+      };
+    }
+
+    /** marca en la lista la caja que se está moviendo */
+    function marcarCaja() {
+      document.querySelectorAll('.geo-row').forEach((fila) => {
+        fila.classList.toggle('sel', Number(fila.dataset.i) === cajaSel);
+      });
+    }
+    /** marca la pieza de armadura elegida y enseña su OFFSET */
+    function marcarArmadura() {
+      document.querySelectorAll('.off').forEach((fila) => {
+        const tipo = fila.dataset.off;
+        const val = Math.round(Number((skin.offsets || {})[tipo]) || 0);
+        fila.classList.toggle('sel', tipo === armorSeleccionada);
+        const num = fila.querySelector('[data-val]');
+        if (num) num.textContent = val ? (val > 0 ? '+' + val : String(val)) : '0';
+      });
+    }
+
+    /** panel de pivotes: una fila por carpeta, arrastrable en la vista */
+    function renderPivotes() {
+      const host = $('#pivotePanel');
+      if (!host) return;
+      host.innerHTML = '';
+      const cab = document.createElement('div');
+      cab.className = 'be-head';
+      cab.innerHTML = '<span>Pivote de cada carpeta (dónde gira)</span>' +
+        '<button class="btn sm ghost" id="pivVer" title="Enseñar u ocultar las cruces en la vista 3D">' +
+          (verPivotes ? 'Ocultar' : 'Ver') + '</button>' +
+        '<button class="btn sm ghost" id="pivReset" title="Volver a los pivotes del juego">Juego</button>';
+      host.appendChild(cab);
+      const grid = document.createElement('div');
+      grid.className = 'piv-grid';
+      CARPETAS.forEach(([carpeta, tipo, txt]) => {
+        const hay = boxes.some((b) => FOLDER_OF_TYPE[b.type] === carpeta);
+        if (!hay && !skin.model3d) return;
+        const pv = pivoteDe(skin, tipo);
+        const propio = pivotePropio(skin, tipo);
+        const fila = document.createElement('div');
+        fila.className = 'piv' + (pivoteSel === tipo ? ' sel' : '');
+        fila.dataset.pivote = tipo;
+        fila.title = carpeta + ' · ' + txt + (propio ? ': giro en ' + pv.map((v) => Math.round(v)).join(', ') +
+          ' (el juego gira en ' + (PCK.BOX_PIVOT[tipo] || [0, 24, 0]).join(', ') + ')' : ': pivote del juego');
+        fila.innerHTML = '<b>' + carpeta + '</b>' +
+          '<em>' + (propio ? pv.map((v) => Math.round(v)).join(', ') : txt) + '</em>' +
+          (propio ? '<button class="btn sm ghost" data-cuadrar="' + tipo + '" ' +
+            'title="Mueve estas cajas para que el juego gire desde el punto que has puesto">Cuadrar</button>' : '');
+        grid.appendChild(fila);
+      });
+      host.appendChild(grid);
+      const nota = document.createElement('div');
+      nota.className = 'muted piv-nota';
+      nota.innerHTML = 'Toca un pivote en la vista 3D y arrástralo al hombro o la cadera de esa carpeta. ' +
+        'El <code>.pck</code> no guarda pivotes (el juego gira en el hombro y la cadera fijos): ' +
+        'si lo mueves, <b>Cuadrar</b> desplaza las cajas de esa carpeta para que en la PS3 gire igual.';
+      host.appendChild(nota);
+      host.querySelectorAll('.piv').forEach((fila) => {
+        fila.onclick = (ev) => {
+          const btn = ev.target.closest('[data-cuadrar]');
+          if (btn) { cuadrarPivote(btn.dataset.cuadrar); return; }
+          pivoteSel = fila.dataset.pivote;
+          setModo('pivote');
+          verPivotes = true;
+          renderPivotes();
+        };
+      });
+      const ver = host.querySelector('#pivVer');
+      if (ver) {
+        ver.onclick = () => {
+          verPivotes = !verPivotes;
+          if (verPivotes && modo !== 'pivote') setModo('pivote');
+          renderPivotes();
+          pintar(armorSeleccionada);
+        };
+      }
+      const reset = host.querySelector('#pivReset');
+      if (reset) {
+        reset.onclick = () => {
+          if (!skin.pivotes || !Object.keys(skin.pivotes).length) return;
+          skin.pivotes = {};
+          persistirModelo();
+          renderPivotes();
+          pintar(armorSeleccionada);
+          render();
+          toast('Pivotes del juego restaurados (hombro y cadera estándar)', 'info');
+        };
+      }
+    }
+    /**
+     * El .pck no guarda pivotes: el juego gira siempre en el hombro y la cadera del
+     * modelo estándar. Si has movido el pivote, esto desplaza las cajas de esa carpeta
+     * para que el giro del juego caiga donde tú quieres (la parte queda dibujada ahí).
+     */
+    function cuadrarPivote(tipo) {
+      const F = (PCK.BOX_PIVOT[tipo] || [0, 24, 0]).slice();
+      const C = pivoteDe(skin, tipo);
+      if (!pivotePropio(skin, tipo)) return;
+      const t = [F[0] - C[0], F[1] - C[1], F[2] - C[2]];
+      const carpeta = FOLDER_OF_TYPE[tipo];
+      const afectadas = boxes.filter((b) => FOLDER_OF_TYPE[b.type] === carpeta);
+      if (!afectadas.length) { toast('Esa carpeta no tiene cajas', 'warn'); return; }
+      const texto = 'Se moverán ' + afectadas.length + ' caja(s) de «' + carpeta + '» ' +
+        t.map((v) => (v > 0 ? '+' + v : v)).join(', ') +
+        ' px para que el juego gire desde el punto que has puesto.\n\n' +
+        'La parte quedará dibujada ahí (el .pck no tiene pivotes propios). ¿Seguir?';
+      if (!window.confirm(texto)) return;
+      afectadas.forEach((b) => {
+        const ms = PCK.boxToModelSpace(b);
+        const min = ms.min.map((v, k) => Math.round(v + t[k]));
+        const max = ms.max.map((v, k) => Math.round(v + t[k]));
+        Object.assign(b, PCK.cubeToBox(b.type, min, max, b.uv, {
+          armor: b.armor, inflate: b.inflate, mirror: b.mirror
+        }));
+      });
+      skin.pivotes = skin.pivotes || {};
+      skin.pivotes[tipo] = F;
+      persistirModelo();
+      renderPivotes();
+      renderGeo(skin, boxes, () => { pintar(null); actualizarMeta(); });
+      pintar(cajaSel);
       render();
-    });
+      toast('«' + carpeta + '» cuadrada con el pivote del juego (y=' + F[1] + ')', 'ok');
+    }
+
+    renderPivotes();
+    marcarArmadura();
 
     $('#dollClose').onclick = () => { pararAnim(); overlay.classList.remove('show'); };
     overlay.onclick = (e) => { if (e.target === overlay) overlay.classList.remove('show'); };
   }
 
+
+  /** refresca el texto (tamaño, inflado, armadura) de las filas sin rehacerlas */
+  function actualizarFilasGeo(boxes) {
+    document.querySelectorAll('.geo-row').forEach((fila) => {
+      const b = boxes[Number(fila.dataset.i)];
+      if (!b) return;
+      const ms = PCK.boxToModelSpace(b);
+      const t = fila.querySelector('[data-size]');
+      if (t) t.textContent = [ms.max[0] - ms.min[0], ms.max[1] - ms.min[1], ms.max[2] - ms.min[2]]
+        .map((v) => Math.round(v)).join('×');
+      const inf = fila.querySelector('[data-inf]');
+      if (inf) inf.textContent = String(b.inflate || 0);
+      const arm = fila.querySelector('.geo-arm');
+      if (arm) arm.textContent = b.armor ? PCK.armorLabel(b.armor) : 'siempre visible';
+    });
+  }
 
   /* ------------------------------ construir ----------------------------- */
   function buildPack() {
@@ -1128,7 +1384,8 @@
       }],
       lce: {
         nota: 'Modelo de ejemplo de SkinForge. Renombra los cubos como head, hat, body, jacket, right_arm, right_sleeve, left_arm, left_sleeve, right_leg, right_pants, left_leg, left_pants.',
-        armor_hint: 'lce_armor: 1 casco · 2 peto · 4 gregüesco · 8 botas (se suman)'
+        armor_hint: 'lce_armor: 1 casco · 2 peto · 4 gregüesco · 8 botas (se suman)',
+        pivot_hint: 'el origin de cada grupo es el punto de giro que has puesto en la vista 3D'
       }
     };
   }
@@ -1162,6 +1419,10 @@
         down: { uv: [u + d + w, v, u + 2 * d + w, v + d] }
       };
     };
+    const pivoteDeCarpeta = (carpeta) => {
+      const tipo = TIPO_DE_CARPETA[carpeta];
+      return tipo ? pivoteDe(skin, tipo) : [0, 24, 0];
+    };
     const elements = boxes.map((box) => {
       const ms = PCK.boxToModelSpace(box);
       const from = [Math.round(ms.min[0]), Math.round(ms.min[1]), Math.round(ms.min[2])];
@@ -1169,7 +1430,7 @@
       const uv = [Math.round(ms.uv[0]), Math.round(ms.uv[1])];
       return {
         uuid: nuevoUuid(), type: 'cube', name: box.type.toLowerCase(),
-        from: from, to: to, origin: [0, 24, 0],
+        from: from, to: to, origin: pivoteDeCarpeta(FOLDER_OF_TYPE[box.type] || 'body'),
         uv_offset: uv, box_uv: true, rotation: [0, 0, 0],
         inflate: box.inflate || 0, lce_armor: box.armor || 0,
         faces: caras(from, to, uv)
@@ -1177,7 +1438,7 @@
     });
     const nombres = ['head', 'body', 'right_arm', 'left_arm', 'right_leg', 'left_leg'];
     const grupos = nombres.map((nombre) => ({
-      uuid: nuevoUuid(), name: nombre, origin: [0, 24, 0], rotation: [0, 0, 0],
+      uuid: nuevoUuid(), name: nombre, origin: pivoteDeCarpeta(nombre), rotation: [0, 0, 0],
       miembros: elements.filter((e) => FOLDER_OF_TYPE[e.name.toUpperCase()] === nombre).map((e) => e.uuid)
     })).filter((g) => g.miembros.length);
     const nombre = (skin && skin.name) ? skin.name : 'Jugador';
@@ -1201,7 +1462,7 @@
   }
 
   /* --------------------- editor de geometría (cajas) -------------------- */
-  function renderGeo(skin, boxes, onPaint) {
+  function renderGeo(skin, boxes, onPaint, onSelect) {
     const host = $('#geoEditor');
     if (!host) return;
     host.innerHTML = '';
@@ -1217,7 +1478,7 @@
     head.innerHTML = '<b>Geometría (' + boxes.length + ' cajas)</b>' +
       '<button class="btn sm ghost" id="geoDl" title="Descargar esta geometría como .bbmodel">Descargar .bbmodel</button>' +
       '<button class="btn sm ghost" id="geoDetect" title="Reparte las cajas en cabeza, cuerpo, brazos y piernas según su posición">Detectar partes</button>' +
-      '<span class="muted">las partes mandan en el movimiento: la cabeza gira, brazos y piernas oscilan</span>';
+      '<span class="muted">toca una caja y arrástrala en la vista · flechas = mover, Mayús+flechas = tamaño</span>';
     host.appendChild(head);
     if (partesTxt) {
       const resumen = document.createElement('div');
@@ -1229,10 +1490,12 @@
     boxes.forEach((box, i) => {
       const row = document.createElement('div');
       row.className = 'geo-row';
-      const campo = (act, label, val, min, max) =>
-        '<label class="geo-f"><span>' + label + '</span>' +
-        '<input type="number" data-i="' + i + '" data-act="' + act + '" value="' + val +
-        '" min="' + min + '" max="' + max + '" step="1" inputmode="numeric"></label>';
+      row.dataset.i = String(i);
+      row.tabIndex = 0;
+      const ms = PCK.boxToModelSpace(box);
+      const size = [ms.max[0] - ms.min[0], ms.max[1] - ms.min[1], ms.max[2] - ms.min[2]]
+        .map((v) => Math.round(v)).join('×');
+      const parte = (skin.model3d && skin.model3d.parts && skin.model3d.parts[i]) || {};
       row.innerHTML =
         '<label class="geo-f geo-part"><span>Parte</span>' +
           '<select data-i="' + i + '" data-act="type" title="A qué parte del muñeco pertenece: de ella depende cómo se mueve">' +
@@ -1240,9 +1503,13 @@
           '</select>' +
           '<span class="geo-arm">' + (box.armor ? PCK.armorLabel(box.armor) : 'siempre visible') + '</span>' +
         '</label>' +
-        campo('w', 'An', box.size[0], 1, 64) + campo('h', 'Al', box.size[1], 1, 64) + campo('d', 'Fd', box.size[2], 1, 64) +
-        campo('x', 'X', box.pos[0], -32, 32) + campo('y', 'Y', box.pos[1], -32, 32) + campo('z', 'Z', box.pos[2], -32, 32) +
-        campo('inf', 'Inf', box.inflate || 0, 0, 4) +
+        '<span class="geo-nombre">' + (parte.name && parte.name !== box.type ? '«' + escapeHtml(parte.name) + '» ' : '') +
+          '<b data-size>' + size + '</b></span>' +
+        '<span class="geo-inf">inflado ' +
+          '<button class="icon-btn" data-i="' + i + '" data-act="inf-" title="Menos inflado">−</button>' +
+          '<b data-inf>' + (box.inflate || 0) + '</b>' +
+          '<button class="icon-btn" data-i="' + i + '" data-act="inf+" title="Más inflado">＋</button></span>' +
+        '<button class="icon-btn pick" data-i="' + i + '" data-act="sel" title="Coger esta caja para arrastrarla en la vista 3D">✥</button>' +
         '<button class="icon-btn del" data-i="' + i + '" data-act="del" title="Quitar caja">✕</button>';
       host.appendChild(row);
     });
@@ -1280,28 +1547,35 @@
         });
         Object.assign(box, nueva);
         persistir();
-        renderGeo(skin, boxes, onPaint);
+        renderGeo(skin, boxes, onPaint, onSelect);
         toast('Caja ' + (i + 1) + ' ahora es <b>' + inp.value + '</b>: se moverá con esa parte', 'info');
         return;
       }
-      const v = Math.max(Number(inp.min), Math.min(Number(inp.max), Math.round(Number(inp.value) || 0)));
-      const act = inp.dataset.act;
-      if (act === 'w') box.size[0] = Math.max(1, v);
-      else if (act === 'h') box.size[1] = Math.max(1, v);
-      else if (act === 'd') box.size[2] = Math.max(1, v);
-      else if (act === 'x') box.pos[0] = v;
-      else if (act === 'y') box.pos[1] = v;
-      else if (act === 'z') box.pos[2] = v;
-      else if (act === 'inf') box.inflate = Math.max(0, v);
-      persistir();
     };
     host.onclick = (e) => {
+      const sel = e.target.closest('[data-act="sel"]');
+      if (sel) {
+        if (onSelect) onSelect(Number(sel.dataset.i));
+        return;
+      }
+      const inf = e.target.closest('[data-act="inf-"], [data-act="inf+"]');
+      if (inf) {
+        const i = Number(inf.dataset.i);
+        const caja = boxes[i];
+        if (!caja) return;
+        const suma = inf.dataset.act === 'inf+' ? 1 : -1;
+        caja.inflate = Math.max(0, Math.min(4, (caja.inflate || 0) + suma));
+        persistir();
+        actualizarFilasGeo(boxes);
+        if (onSelect) onSelect(i, true);
+        return;
+      }
       const b = e.target.closest('[data-act="del"]');
       if (b) {
         if (boxes.length === 1) { toast('Tiene que quedar al menos una caja', 'warn'); return; }
         boxes.splice(Number(b.dataset.i), 1);
         persistir();
-        renderGeo(skin, boxes, onPaint);
+        renderGeo(skin, boxes, onPaint, onSelect);
         return;
       }
       if (e.target.id === 'geoAddBtn') {
@@ -1313,8 +1587,8 @@
           });
         boxes.push(nueva);
         persistir();
-        renderGeo(skin, boxes, onPaint);
-        toast('Caja <b>' + tipo + '</b> añadida (' + std.join('×') + '). Retoca sus números o su UV.', 'ok');
+        renderGeo(skin, boxes, onPaint, onSelect);
+        toast('Caja <b>' + tipo + '</b> añadida (' + std.join('×') + '). Arrástrala en la vista 3D para colocarla.', 'ok');
         return;
       }
       if (e.target.id === 'geoDetect') {
@@ -1333,7 +1607,7 @@
           cambiadas++;
         });
         persistir();
-        renderGeo(skin, boxes, onPaint);
+        renderGeo(skin, boxes, onPaint, onSelect);
         const cuenta2 = {};
         tipos.forEach((t) => { cuenta2[t] = (cuenta2[t] || 0) + 1; });
         toast('Partes detectadas por posición: <b>' +
@@ -1346,7 +1620,39 @@
         const bytes = new TextEncoder().encode(JSON.stringify(json, null, 2));
         download(bytes, safeFileName(skin.name || 'skin') + '-geometria.bbmodel');
         toast('Descargado el <code>.bbmodel</code> con las ' + boxes.length + ' cajas', 'ok');
+        return;
       }
+      // tocar la fila (sin botones) elige la caja para arrastrarla en la vista
+      const fila = e.target.closest('.geo-row');
+      if (fila && onSelect) onSelect(Number(fila.dataset.i));
+    };
+
+    // con el teclado: flechas mueven la caja, Mayús+flechas la estiran
+    host.onkeydown = (e) => {
+      const fila = e.target.closest('.geo-row');
+      if (!fila || e.target.tagName === 'SELECT') return;
+      const i = Number(fila.dataset.i);
+      const caja = boxes[i];
+      if (!caja) return;
+      const paso = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowDown: [0, -1], ArrowUp: [0, 1] }[e.key];
+      if (!paso) return;
+      e.preventDefault();
+      const ms = PCK.boxToModelSpace(caja);
+      const min = ms.min.map((v) => Math.round(v)), max = ms.max.map((v) => Math.round(v));
+      if (e.shiftKey) {
+        // el eje vertical del teclado manda en el tamaño (arriba/abajo = alto, izq/der = ancho)
+        const eje = paso[1] ? 1 : 0;
+        max[eje] = Math.max(min[eje] + 1, max[eje] + paso[eje]);
+      } else {
+        min[0] += paso[0]; max[0] += paso[0];
+        min[1] += paso[1]; max[1] += paso[1];
+      }
+      Object.assign(caja, PCK.cubeToBox(caja.type, min, max, caja.uv, {
+        armor: caja.armor, inflate: caja.inflate, mirror: caja.mirror
+      }));
+      persistir();
+      actualizarFilasGeo(boxes);
+      if (onSelect) onSelect(i, true);
     };
   }
 
@@ -1645,8 +1951,10 @@
     //   4.x  → outliner con el grupo entero en línea (name incluido)
     //   viejo → groups[].children con los uuid de los cubos
     const defs = {};
+    const originOf = {};   // nombre del grupo -> punto de giro (origin de Blockbench)
     (Array.isArray(json.groups) ? json.groups : []).forEach((g) => {
       if (g && g.uuid) defs[g.uuid] = g.name || '';
+      if (g && g.name && Array.isArray(g.origin)) originOf[g.name] = g.origin;
     });
     const groupOf = {};
     const nombres = [];
@@ -1658,6 +1966,8 @@
       if (!nodo || typeof nodo !== 'object') return;
       const nombre = nodo.name || defs[nodo.uuid] || padre || '';
       if (nodo.name || defs[nodo.uuid]) nombres.push(nombre);
+      const ori = Array.isArray(nodo.origin) ? nodo.origin : null;
+      if (ori && nombre) originOf[nombre] = ori;
       (nodo.children || []).forEach((hijo) => {
         if (typeof hijo === 'string' && nombre) groupOf[hijo] = nombre;
         else walk(hijo, nombre);
@@ -1677,6 +1987,7 @@
       textureName: textureName,
       hasEmbeddedTexture: !!textureUrl,
       groupOf: groupOf,
+      originOf: originOf,
       groupNames: nombres.filter(Boolean)
     };
   }
@@ -1847,6 +2158,21 @@
     const text = await file.text();
     const parsed = parseBbModel(text);
     const res = bbToBoxes(parsed, skin);
+    // pivotes de las carpetas: si el .bbmodel trae `origin` en los grupos, se usan
+    const pivotes = {};
+    const origenes = parsed.originOf || {};
+    Object.keys(origenes).forEach((nombreGrupo) => {
+      const tipo = TIPO_DE_CARPETA[String(nombreGrupo).toLowerCase()] || guessBoxType(nombreGrupo);
+      if (!tipo) return;
+      const ori = origenes[nombreGrupo];
+      if (!Array.isArray(ori) || ori.length < 3) return;
+      const pv = ori.slice(0, 3).map((v) => Math.round(Number(v) || 0));
+      // [0,24,0] es el origin por defecto de Blockbench: no significa «pivote propio»
+      if (pv.every((v, i) => Math.abs(v - [0, 24, 0][i]) < 0.01)) return;
+      pivotes[tipo] = pv;
+    });
+    if (Object.keys(pivotes).length) skin.pivotes = pivotes;
+
     skin.model3d = {
       fileName: file.name,
       boxes: res.boxes,
@@ -2703,6 +3029,29 @@
     })
   };
 
+  /** carpetas del modelo (las seis del jugador) y la parte que las mueve */
+  const CARPETAS = [
+    ['head', 'HEAD', 'Cabeza'],
+    ['body', 'BODY', 'Cuerpo'],
+    ['right_arm', 'ARM0', 'Brazo der.'],
+    ['left_arm', 'ARM1', 'Brazo izq.'],
+    ['right_leg', 'LEG0', 'Pierna der.'],
+    ['left_leg', 'LEG1', 'Pierna izq.']
+  ];
+  const TIPO_DE_CARPETA = { head: 'HEAD', body: 'BODY', right_arm: 'ARM0', left_arm: 'ARM1', right_leg: 'LEG0', left_leg: 'LEG1' };
+
+  /** pivote (punto de giro) de una parte: el que haya puesto el usuario o el del juego */
+  function pivoteDe(skin, tipo) {
+    const pv = skin && skin.pivotes && skin.pivotes[tipo];
+    if (Array.isArray(pv) && pv.length === 3) return pv.map((v) => Number(v) || 0);
+    return (PCK.BOX_PIVOT[tipo] || [0, 24, 0]).slice();
+  }
+  /** ¿el pivote es distinto del que usa el juego? */
+  function pivotePropio(skin, tipo) {
+    const a = pivoteDe(skin, tipo), b = PCK.BOX_PIVOT[tipo] || [0, 24, 0];
+    return a.some((v, i) => Math.abs(v - b[i]) > 0.01);
+  }
+
   /** a qué parte del muñeco va pegada cada pieza de armadura (para animarla con él) */
   const PARTE_DE_ARMADURA = {
     HELMET: 'HEAD', HAT: 'HEAD',
@@ -2760,11 +3109,16 @@
     // postura: cada parte gira alrededor de su pivote (es lo que hace el juego al andar)
     const rot = opts.rot || {};
     const bob = Number(opts.bob) || 0;
+    /** pivote de cada parte: el del juego, salvo que se haya movido en el editor */
+    const pivoteDeTipo = (tipo) => {
+      const pv = (opts.pivotes && opts.pivotes[tipo]) || pivoteDe(skin, tipo);
+      return pv;
+    };
     const aplicarRot = (p, tipo) => {
       let x = p[0], y = p[1] + bob, z = p[2];
       const r = rot[tipo];
       if (r && (r.x || r.y)) {
-        const piv = PCK.BOX_PIVOT[tipo] || [0, 24, 0];
+        const piv = pivoteDeTipo(tipo);
         let dx = x - piv[0], dy = y - piv[1], dz = z - piv[2];
         if (r.x) {
           const c = Math.cos(r.x), s2 = Math.sin(r.x);
@@ -2899,7 +3253,10 @@
 
       // --- skin: base y capas por separado ---
       const dibujadas = { base: 0, capas: 0, armadura: 0 };
-      boxes.forEach((box) => {
+      const cajas = [];        // rectángulo en pantalla de cada caja (para tocarla y arrastrarla)
+      const pivotesProy = {};  // cruz de cada carpeta
+      let tiradores = null;    // tiradores de la caja elegida
+      boxes.forEach((box, index) => {
         const esCapa = PCK.OVERLAY_BOX_TYPES.indexOf(box.type) >= 0;
         if (esCapa && opts.capas === false) return;
         if (!esCapa && opts.base === false) return;
@@ -2909,6 +3266,19 @@
         const b = [[ms.min[0] - inf, ms.min[1] - inf, ms.min[2] - inf], [ms.max[0] + inf, ms.max[1] + inf, ms.max[2] + inf]];
         const w = ms.max[0] - ms.min[0], h = ms.max[1] - ms.min[1], d = ms.max[2] - ms.min[2];
         const uvs = carasUV(box.uv, w, h, d);
+        const ocho = [
+          [b[0][0], b[0][1], b[0][2]], [b[1][0], b[0][1], b[0][2]],
+          [b[0][0], b[1][1], b[0][2]], [b[1][0], b[1][1], b[0][2]],
+          [b[0][0], b[0][1], b[1][2]], [b[1][0], b[0][1], b[1][2]],
+          [b[0][0], b[1][1], b[1][2]], [b[1][0], b[1][1], b[1][2]]
+        ].map((q) => proyectarParte(q, box.type));
+        const xs8 = ocho.map((q) => q.x), ys8 = ocho.map((q) => q.y);
+        cajas.push({
+          i: index, tipo: box.type,
+          x0: Math.min.apply(null, xs8), x1: Math.max.apply(null, xs8),
+          y0: Math.min.apply(null, ys8), y1: Math.max.apply(null, ys8),
+          depth: Math.max.apply(null, ocho.map((q) => q.depth))
+        });
         CARAS.forEach((c) => {
           const pts = esquinas(c, b).map((q) => proyectarParte(q, box.type));
           const rect = uvs[c.key];
@@ -2999,6 +3369,72 @@
         ctx.stroke();
       });
 
+      // --- pivotes de las carpetas (se arrastran) ---
+      if (opts.verPivotes) {
+        CARPETAS.forEach(([carpeta, tipo]) => {
+          const pv = pivoteDeTipo(tipo);
+          const q = project(pv[0], pv[1], pv[2]);
+          const elegido = opts.pivoteSel === tipo;
+          const propio = pv.some((v, i) => Math.abs(v - (PCK.BOX_PIVOT[tipo] || [0, 24, 0])[i]) > 0.01);
+          pivotesProy[tipo] = { x: q.x, y: q.y, pivote: pv, carpeta: carpeta, propio: propio };
+          const color = elegido ? '#ffb457' : (propio ? '#ff8f5a' : '#6cc4ff');
+          ctx.save();
+          if (!propio) { ctx.setLineDash([3, 3]); }
+          ctx.strokeStyle = color;
+          ctx.lineWidth = elegido ? 2 : 1.2;
+          ctx.beginPath(); ctx.moveTo(q.x, q.y - 11); ctx.lineTo(q.x, q.y + 11); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(q.x - 11, q.y); ctx.lineTo(q.x + 11, q.y); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.beginPath(); ctx.arc(q.x, q.y, elegido ? 6 : 4, 0, Math.PI * 2);
+          ctx.fillStyle = color; ctx.fill();
+          ctx.strokeStyle = 'rgba(8,12,20,0.85)'; ctx.lineWidth = 1; ctx.stroke();
+          if (elegido) {
+            ctx.font = '600 11px system-ui, sans-serif';
+            ctx.fillStyle = 'rgba(10,14,22,0.75)';
+            const txt = carpeta + '  ' + pv.map((v) => Math.round(v)).join(', ');
+            const an = ctx.measureText(txt).width;
+            const aIzq = q.x + 15 + an > W - 6;         // que la etiqueta no se salga del lienzo
+            const x0 = aIzq ? q.x - 15 - an : q.x + 10;
+            ctx.fillRect(x0, q.y - 22, an + 10, 16);
+            ctx.fillStyle = '#ffd9a8';
+            ctx.fillText(txt, x0 + 5, q.y - 10);
+          }
+          ctx.restore();
+        });
+      }
+
+      // --- caja elegida: marco y tiradores para mover / estirar ---
+      const elegidaIdx = opts.cajaSel;
+      const rectElegida = elegidaIdx == null ? null : cajas.find((z) => z.i === elegidaIdx);
+      if (rectElegida && opts.modo === 'caja') {
+        ctx.save();
+        ctx.setLineDash([4, 3]);
+        ctx.strokeStyle = 'rgba(255,196,110,0.95)';
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(rectElegida.x0, rectElegida.y0, rectElegida.x1 - rectElegida.x0, rectElegida.y1 - rectElegida.y0);
+        ctx.setLineDash([]);
+        const cuadro = (x, y, col, letra) => {
+          ctx.fillStyle = col;
+          ctx.fillRect(x - 6, y - 6, 12, 12);
+          ctx.strokeStyle = 'rgba(8,12,20,0.9)'; ctx.lineWidth = 1.5;
+          ctx.strokeRect(x - 6, y - 6, 12, 12);
+          if (letra) {
+            ctx.fillStyle = '#0b0f18';
+            ctx.font = '700 9px system-ui, sans-serif';
+            ctx.fillText(letra, x - 3, y + 3);
+          }
+        };
+        tiradores = {
+          w: { x: rectElegida.x1 + 10, y: (rectElegida.y0 + rectElegida.y1) / 2 },
+          h: { x: (rectElegida.x0 + rectElegida.x1) / 2, y: rectElegida.y0 - 10 },
+          d: { x: rectElegida.x1 + 10, y: rectElegida.y0 - 10 }
+        };
+        cuadro(tiradores.w.x, tiradores.w.y, '#ffb457', 'A');
+        cuadro(tiradores.h.x, tiradores.h.y, '#7ee081', 'H');
+        cuadro(tiradores.d.x, tiradores.d.y, '#6cc4ff', 'F');
+        ctx.restore();
+      }
+
       // etiqueta de la pieza elegida
       if (opts.selected) {
         const val = (skin.offsets || {})[opts.selected] || 0;
@@ -3011,7 +3447,12 @@
         ctx.fillText('arrastra arriba/abajo', 12, 38);
       }
 
-      canvas._lce3d = { piezas: piezas, dibujadas: dibujadas, escala: scale, alto: H, ancho: W };
+      canvas._lce3d = {
+        piezas: piezas, dibujadas: dibujadas, escala: scale, alto: H, ancho: W,
+        cajas: cajas, pivotes: pivotesProy, tiradores: tiradores,
+        // datos para pasar de "píxeles arrastrados" a "píxeles del modelo"
+        proy: { escala: scale, cosY: cosY, sinY: sinY, cosP: cosP, sinP: sinP, cx: cx, cy: cy }
+      };
     };
     const img = imagenDeSkin(skin.thumbUrl);
     if (img.complete && img.naturalWidth) dibujar();
@@ -3020,15 +3461,24 @@
     function b0(tipo, bx) { return armorPieceBox(tipo, bx); }
   }
 
-  /** arrastrar las piezas de armadura en la vista 3D */
-  function initArmorDrag(canvas, skin, onChange) {
-    // el contexto se actualiza en cada apertura; los listeners se ponen una sola vez
-    canvas._lceCtx = Object.assign(canvas._lceCtx || {}, { skin: skin, onChange: onChange, sel: () => armorSeleccionada });
+  /**
+   * Arrastrar en la vista 3D. Según el modo elegido:
+   *   girar   → gira el muñeco (y mueve las piezas de armadura)
+   *   caja    → mueve la caja que toques y estira con los tiradores A / H / F
+   *   pivote  → mueve el punto de giro de cada carpeta
+   */
+  function initDrag3D(canvas, api) {
+    canvas._lceApi = api;
+    canvas._lceCtx = Object.assign(canvas._lceCtx || {}, {
+      skin: api.skin,
+      onChange: (tipo, valor, inicio) => canvas._lceApi.onArmor(tipo, valor, inicio),
+      sel: () => canvas._lceApi.getArmor()
+    });
     if (canvas._lceBound) return;
     canvas._lceBound = true;
-    let activa = null;
-    let y0 = 0;
-    let off0 = 0;
+
+    let arrastre = null;
+
     const punto = (ev) => {
       const r = canvas.getBoundingClientRect();
       return {
@@ -3036,72 +3486,193 @@
         y: (ev.clientY - r.top) * (canvas.height / r.height)
       };
     };
+    /** cómo se mueve en pantalla un paso de 1 píxel en cada eje del modelo */
+    const vectores = (pr) => ({
+      x: [pr.cosY * pr.escala, pr.sinP * pr.sinY * pr.escala],
+      y: [0, -pr.cosP * pr.escala],
+      z: [-pr.sinY * pr.escala, pr.sinP * pr.cosY * pr.escala]
+    });
+    /** cuántos píxeles del modelo hay en un arrastre de pantalla sobre ese eje */
+    const proyecta = (d, v) => {
+      const l2 = v[0] * v[0] + v[1] * v[1];
+      return l2 ? (d[0] * v[0] + d[1] * v[1]) / l2 : 0;
+    };
+    /**
+     * Arrastre de pantalla → píxeles del modelo. Horizontal mueve X y vertical mueve Y
+     * (sin mezclarlos: así el muñeco no se va de lado cuando lo subes).
+     */
+    const enPlano = (d, v) => [
+      Math.abs(v.x[0]) > 1e-6 ? d[0] / v.x[0] : 0,
+      Math.abs(v.y[1]) > 1e-6 ? d[1] / v.y[1] : 0
+    ];
     const piezaEn = (p) => {
       const st = canvas._lce3d;
       if (!st) return null;
-      // la más pequeña que contenga el punto = la que está delante
       const dentro = st.piezas.filter((z) => p.x >= z.x0 && p.x <= z.x1 && p.y >= z.y0 && p.y <= z.y1);
       dentro.sort((a, b) => (a.x1 - a.x0) * (a.y1 - a.y0) - (b.x1 - b.x0) * (b.y1 - b.y0));
       return dentro[0] || null;
     };
-    let girando = null;
+    /** la caja de la skin que hay debajo (la que está más cerca de la cámara) */
+    const cajaEn = (p) => {
+      const st = canvas._lce3d;
+      if (!st || !st.cajas) return null;
+      const dentro = st.cajas.filter((z) => p.x >= z.x0 && p.x <= z.x1 && p.y >= z.y0 && p.y <= z.y1);
+      dentro.sort((a, b) => b.depth - a.depth);
+      return dentro.length ? dentro[0].i : null;
+    };
+    const pivoteEn = (p) => {
+      const st = canvas._lce3d;
+      if (!st || !st.pivotes) return null;
+      let mejor = 20, quien = null;
+      Object.keys(st.pivotes).forEach((t) => {
+        const m = st.pivotes[t];
+        const d = Math.hypot(m.x - p.x, m.y - p.y);
+        if (d <= mejor) { mejor = d; quien = t; }
+      });
+      return quien;
+    };
+
     canvas.addEventListener('pointerdown', (ev) => {
-      if (!canvas._lceCtx) return;
+      const A = canvas._lceApi;
+      const st = canvas._lce3d;
+      if (!A || !st) return;
       const p = punto(ev);
-      // si el dedo está sobre la pieza elegida en la lista, la mueve; si está sobre otra, esa;
-      // y si no hay ninguna pieza debajo, gira el muñeco
-      const elegida = canvas._lceCtx.sel && canvas._lceCtx.sel();
-      const rectSel = elegida && canvas._lce3d
-        ? canvas._lce3d.piezas.find((z) => z.tipo === elegida) : null;
-      const dentroSel = rectSel && p.x >= rectSel.x0 && p.x <= rectSel.x1 && p.y >= rectSel.y0 && p.y <= rectSel.y1;
-      const pieza = dentroSel ? { tipo: elegida } : piezaEn(p);
-      if (!pieza) {
-        // no hay armadura debajo: girar el muñeco (ratón o dedo)
-        if (!canvas._lceCtx.rotar) return;
-        girando = { x: ev.clientX, y: ev.clientY };
+      const modo = A.getModo();
+      const agarrar = (datos) => {
+        arrastre = datos;
+        arrastre.ini = { x: ev.clientX, y: ev.clientY };
+        arrastre.proy = st.proy;
+        try { canvas.setPointerCapture(ev.pointerId); } catch (e) { /* noop */ }
         canvas.classList.add('arrastrando');
-        canvas.setPointerCapture(ev.pointerId);
         ev.preventDefault();
-        return;
+      };
+
+      // 1) pivotes de las carpetas
+      if (modo === 'pivote') {
+        const quien = pivoteEn(p);
+        if (quien) {
+          A.setPivoteSel(quien);
+          agarrar({ tipo: 'pivote', parte: quien, base: st.pivotes[quien].pivote.slice() });
+          return;
+        }
       }
-      activa = pieza.tipo;
-      y0 = ev.clientY;
-      off0 = Number((canvas._lceCtx.skin.offsets || {})[activa]) || 0;
-      canvas.setPointerCapture(ev.pointerId);
-      canvas.style.cursor = 'ns-resize';
-      canvas._lceCtx.onChange(activa, off0, true);
+
+      // 2) cajas de la skin: tiradores primero, luego la caja que toques
+      if (modo === 'caja') {
+        const sel = A.getCaja();
+        if (sel != null && st.tiradores) {
+          const ejes = ['w', 'h', 'd'];
+          for (let k = 0; k < ejes.length; k++) {
+            const t = st.tiradores[ejes[k]];
+            if (Math.hypot(t.x - p.x, t.y - p.y) <= 17) {
+              const base = A.getCajaModelo(sel);
+              if (base) { agarrar({ tipo: 'estirar', eje: ejes[k], i: sel, base: base }); return; }
+            }
+          }
+        }
+        const bajo = cajaEn(p);
+        if (bajo != null) {
+          A.setCaja(bajo);
+          const base = A.getCajaModelo(bajo);
+          if (base) { agarrar({ tipo: 'caja', i: bajo, base: base }); return; }
+        }
+      }
+
+      // 3) armadura (solo en el modo de girar, como siempre)
+      if (modo === 'girar') {
+        const elegida = A.getArmor();
+        const rectSel = elegida ? st.piezas.find((z) => z.tipo === elegida) : null;
+        const dentroSel = rectSel && p.x >= rectSel.x0 && p.x <= rectSel.x1 && p.y >= rectSel.y0 && p.y <= rectSel.y1;
+        const pieza = dentroSel ? { tipo: elegida } : piezaEn(p);
+        if (pieza) {
+          const off0 = Number((A.skin.offsets || {})[pieza.tipo]) || 0;
+          A.onArmor(pieza.tipo, off0, true);
+          agarrar({ tipo: 'armadura', parte: pieza.tipo, y0: ev.clientY, off0: off0 });
+          return;
+        }
+      }
+
+      // 4) si no hay nada debajo: girar el muñeco
+      arrastre = { tipo: 'girar', x: ev.clientX, y: ev.clientY };
+      try { canvas.setPointerCapture(ev.pointerId); } catch (e) { /* noop */ }
+      canvas.classList.add('arrastrando');
       ev.preventDefault();
     });
+
     canvas.addEventListener('pointermove', (ev) => {
+      const A = canvas._lceApi;
       const p = punto(ev);
-      if (girando) {
-        canvas._lceCtx.rotar(ev.clientX - girando.x, ev.clientY - girando.y);
-        girando = { x: ev.clientX, y: ev.clientY };
+      if (!arrastre) {
+        let cur = 'default';
+        const modo = A.getModo();
+        if (modo === 'caja' && cajaEn(p) != null) cur = 'move';
+        else if (modo === 'pivote' && pivoteEn(p)) cur = 'grab';
+        else if (modo === 'girar' && piezaEn(p)) cur = 'ns-resize';
+        canvas.style.cursor = cur;
+        return;
+      }
+      if (arrastre.tipo === 'girar') {
+        A.rotar(ev.clientX - arrastre.x, ev.clientY - arrastre.y);
+        arrastre.x = ev.clientX;
+        arrastre.y = ev.clientY;
         ev.preventDefault();
         return;
       }
-      if (!activa) {
-        canvas.style.cursor = piezaEn(p) ? 'ns-resize' : 'default';
+      const rCaja = canvas.getBoundingClientRect();
+      const kPx = rCaja.width ? canvas.width / rCaja.width : 1;   // píxeles CSS → píxeles del lienzo
+      const d = [(ev.clientX - arrastre.ini.x) * kPx, (ev.clientY - arrastre.ini.y) * kPx];
+      if (arrastre.tipo === 'armadura') {
+        const r = canvas.getBoundingClientRect();
+        const escalaPx = (canvas._lce3d ? canvas._lce3d.escala : 9) * (r.height / canvas.height);
+        const delta = Math.round((ev.clientY - arrastre.y0) / escalaPx);
+        A.onArmor(arrastre.parte, arrastre.off0 + delta, false);
+        ev.preventDefault();
         return;
       }
-      const r = canvas.getBoundingClientRect();
-      const escalaPx = (canvas._lce3d ? canvas._lce3d.escala : 9) * (r.height / canvas.height);
-      const delta = Math.round((ev.clientY - y0) / escalaPx);   // bajar el ratón = bajar la pieza
-      const valor = off0 + delta;
-      if (canvas._lceCtx) canvas._lceCtx.onChange(activa, valor, false);
-      ev.preventDefault();
+      const v = vectores(arrastre.proy);
+      if (arrastre.tipo === 'caja') {
+        const plano = enPlano(d, v);
+        const fondo = ev.shiftKey || A.getFondo();
+        const dz = fondo ? proyecta(d, v.z) : 0;
+        const paso = [plano[0], plano[1], dz].map((n) => Math.round(n));
+        const min = arrastre.base.min.map((n, k) => n + paso[k]);
+        const max = arrastre.base.max.map((n, k) => n + paso[k]);
+        A.colocarCaja(arrastre.i, min, max);
+        ev.preventDefault();
+        return;
+      }
+      if (arrastre.tipo === 'estirar') {
+        const eje = arrastre.eje === 'w' ? 0 : (arrastre.eje === 'h' ? 1 : 2);
+        // el tirador siempre crece al arrastrarlo hacia fuera (derecha / arriba), gire como gire la vista
+        const k = eje === 0 ? Math.round(d[0] / Math.max(1e-6, Math.abs(v.x[0])))
+          : eje === 1 ? Math.round(-d[1] / Math.max(1e-6, Math.abs(v.y[1])))
+            : Math.round(proyecta(d, v.z));
+        const min = arrastre.base.min.slice(), max = arrastre.base.max.slice();
+        max[eje] = Math.max(min[eje] + 1, arrastre.base.max[eje] + k);
+        A.colocarCaja(arrastre.i, min, max);
+        ev.preventDefault();
+        return;
+      }
+      if (arrastre.tipo === 'pivote') {
+        const plano = enPlano(d, v).map((n) => Math.round(n));
+        A.colocarPivote(arrastre.parte, [
+          Math.round(arrastre.base[0] + plano[0]),
+          Math.round(arrastre.base[1] + plano[1]),
+          Math.round(arrastre.base[2])
+        ]);
+        ev.preventDefault();
+      }
     });
+
     const fin = (ev) => {
-      if (girando) {
-        girando = null;
-        canvas.classList.remove('arrastrando');
-        try { canvas.releasePointerCapture(ev.pointerId); } catch (e) { /* noop */ }
-        return;
-      }
-      if (!activa) return;
-      activa = null;
+      if (!arrastre) return;
+      const A = canvas._lceApi;
+      const tipo = arrastre.tipo;
+      arrastre = null;
+      canvas.classList.remove('arrastrando');
       canvas.style.cursor = 'default';
       try { canvas.releasePointerCapture(ev.pointerId); } catch (e) { /* noop */ }
+      if (A && A.finArrastre) A.finArrastre(tipo);
     };
     canvas.addEventListener('pointerup', fin);
     canvas.addEventListener('pointercancel', fin);
