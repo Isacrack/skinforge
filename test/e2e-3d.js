@@ -711,6 +711,68 @@ function pngDataUrl(file) {
   assert.strictEqual(Number(cabezaPck.split(' ')[4]), anchoNuevo, 'el .pck lleva el BOX con el ancho nuevo: ' + cabezaPck);
   console.log('  ✓ geometría editable en la app y .bbmodel descargable con los cambios');
 
+  /* 8. personaje alto (no tipo Steve): encuadre automático y «sin cuerpo base» */
+  const modeloAlto = {
+    meta: { format_version: '4.10', model_format: 'free', box_uv: true },
+    name: 'alto', resolution: { width: 64, height: 64 },
+    elements: [
+      { name: 'head', from: [-5, 36, -5], to: [5, 46, 5], origin: [0, 36, 0], uv_offset: [0, 0] },
+      { name: 'body', from: [-4, 14, -2], to: [4, 36, 2], origin: [0, 24, 0], uv_offset: [16, 16] },
+      { name: 'right_leg', from: [-4, 0, -2], to: [0, 14, 2], origin: [-2, 12, 0], uv_offset: [0, 16] },
+      { name: 'left_leg', from: [0, 0, -2], to: [4, 14, 2], origin: [2, 12, 0], uv_offset: [0, 16] }
+    ],
+    outliner: [
+      { name: 'head', origin: [0, 36, 0], children: [] },
+      { name: 'body', origin: [0, 24, 0], children: [] },
+      { name: 'right_leg', origin: [-2, 12, 0], children: [] },
+      { name: 'left_leg', origin: [2, 12, 0], children: [] }
+    ],
+    textures: [{ name: 'alto.png', source: 'data:image/png;base64,' + fs.readFileSync(path.join(OUT, 'steve.png')).toString('base64') }]
+  };
+  const rutaAlto = path.join(OUT, 'modelo-alto.bbmodel');
+  fs.writeFileSync(rutaAlto, JSON.stringify(modeloAlto));
+  await page.setInputFiles('#fileInput', [rutaAlto]);
+  await page.waitForTimeout(1500);
+  const altoBtn = page.locator('.skin-card').last().locator('.doll-btn');
+  await altoBtn.click();
+  await page.waitForFunction(() => document.querySelector('#dollCanvas')._lce3d, null, { timeout: 15000 });
+  await page.waitForTimeout(400);
+  const altoChk = await page.locator('#hideBaseChk').isChecked();
+  assert.ok(altoChk, 'un modelo de personaje alto activa «sin cuerpo base» solo');
+  // el dibujo no se sale del lienzo: hay píxeles en el tercio superior y en el inferior
+  const altoPx = await page.evaluate(() => {
+    const c = document.querySelector('#dollCanvas');
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    const H = c.height, W = c.width;
+    let arriba = 0, abajo = 0, borde = 0;
+    for (let y = 0; y < H; y++) {
+      for (let x = 0; x < W; x++) {
+        const o = (y * W + x) * 4;
+        if (d[o + 3] < 40) continue;
+        if (y < H / 3) arriba++;
+        if (y > (2 * H) / 3) abajo++;
+        if (y < 2 || y > H - 3 || x < 2 || x > W - 3) borde++;
+      }
+    }
+    return { arriba, abajo, borde };
+  });
+  assert.ok(altoPx.arriba > 200 && altoPx.abajo > 200, 'el personaje alto se ve de arriba abajo: ' + JSON.stringify(altoPx));
+  assert.strictEqual(altoPx.borde, 0, 'y no se corta en los bordes del lienzo: ' + altoPx.borde);
+  await page.locator('#dollCanvas').screenshot({ path: path.join(OUT, 'shot-modelo-alto.png') });
+  await page.click('#dollClose');
+  await page.waitForTimeout(200);
+  const [dlAlto] = await Promise.all([page.waitForEvent('download'), page.click('#downloadBtn')]);
+  const rutaPackAlto = path.join(OUT, 'alto.pck');
+  await dlAlto.saveAs(rutaPackAlto);
+  const bufAlto = fs.readFileSync(rutaPackAlto);
+  const packAlto = PCK.readPck(bufAlto.buffer.slice(bufAlto.byteOffset, bufAlto.byteOffset + bufAlto.byteLength));
+  const skinsAlto = PCK.extractSkins(packAlto).skins;
+  const conBaseOculta = skinsAlto.filter((sk) => sk.hideBase);
+  assert.strictEqual(conBaseOculta.length >= 1, true, 'el .pck sale con el cuerpo base oculto (ANIM 0x' +
+    (conBaseOculta[0] ? conBaseOculta[0].anim.toString(16) : '0') + ')');
+  assert.deepStrictEqual(errors, [], 'sin errores: ' + errors.join(' | '));
+  console.log('  ✓ personaje alto: encuadre automático y «sin cuerpo base» en el ANIM');
+
   assert.deepStrictEqual(errors, [], 'errores de consola: ' + errors.join(' | '));
   console.log('\nE2E MODELO 3D OK');
   await browser.close();

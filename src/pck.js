@@ -541,9 +541,20 @@
 
   var ANIM = {
     NONE: 0x00000000,
-    MODERN_WIDE_MODEL: 0x00040000, // skin 64x64, brazos anchos (Steve)
-    SLIM_MODEL: 0x00080000,        // skin 64x64, brazos finos (Alex)
-    HIDE_ARMOR: 0x00000100         // bit 9: no dibujar ninguna armadura (TU17)
+    MODERN_WIDE_MODEL: 0x00040000, // bit 19: skin 64x64, brazos anchos (Steve)
+    SLIM_MODEL: 0x00080000,        // bit 20: skin 64x64, brazos finos (Alex)
+    HIDE_ARMOR: 0x00000100,        // bit 9:  no dibujar ninguna armadura (TU17)
+    HIDE_BASE_HEAD: 0x00000400,    // bit 11: quita la cabeza del muñeco base
+    HIDE_BASE_RIGHT_ARM: 0x00000800, // bit 12
+    HIDE_BASE_LEFT_ARM: 0x00001000,  // bit 13
+    HIDE_BASE_TORSO: 0x00002000,     // bit 14
+    HIDE_BASE_RIGHT_LEG: 0x00004000, // bit 15
+    HIDE_BASE_LEFT_LEG: 0x00008000,  // bit 16
+    HIDE_BASE_HEADWEAR: 0x00010000,  // bit 17
+    HIDE_BASE_OVERLAYS: 0x01F00000,  // bits 21-25: mangas, chaqueta y pantalones
+    /** las seis cajas del jugador base + las capas 1.8: el muñeco de Steve desaparece */
+    HIDE_BASE_BODY: 0x0000FC00,
+    HIDE_BASE_ALL: 0x01F1FC00
   };
 
   var GAME_FLAGS = {
@@ -618,6 +629,8 @@
       }
       var anim = s.anim == null ? ANIM.MODERN_WIDE_MODEL : s.anim;
       if (s.hideArmor) anim |= ANIM.HIDE_ARMOR;
+      // skin con modelo propio: fuera el muñeco base (y su armadura)
+      if (s.hideBase) anim |= (ANIM.HIDE_BASE_ALL | ANIM.HIDE_ARMOR);
       var flags = s.gameFlags == null ? GAME_FLAGS.HUMAN : s.gameFlags;
       if (s.unfair) flags |= GAME_FLAGS.UNFAIR;
       params.push(['ANIM', '0x' + hex(anim, 8)]);
@@ -709,6 +722,7 @@
         params: a.params,
         offsets: parseOffsets(a.params),
         hideArmor: !!(parseInt(a.get('ANIM') || '0x0', 16) & ANIM.HIDE_ARMOR),
+        hideBase: (parseInt(a.get('ANIM') || '0x0', 16) & ANIM.HIDE_BASE_BODY) === ANIM.HIDE_BASE_BODY,
         unfair: !!(parseInt(a.get('GAME_FLAGS') || '0x18', 16) & GAME_FLAGS.UNFAIR),
         xmlVersion: a.xmlVersion,
         filename: a.filename

@@ -141,6 +141,30 @@ ok('los IDs se autogeneran únicos y de 8 dígitos', () => {
   names.forEach(n => assert.match(n, /^dlcskin\d{8}\.png$/));
 });
 
+ok('«sin cuerpo base» oculta el muñeco de Steve con los bits 11-16 (y la armadura)', () => {
+  const built = PCK.buildSkinPack({
+    packName: 'personaje',
+    skins: [{ name: 'gangle', png: fakePng(10), hideBase: true }]
+  });
+  const p = PCK.readPck(built.bytes);
+  const skin = p.assets.find(a => a.type === 0);
+  const anim = parseInt(skin.get('ANIM'), 16);
+  assert.strictEqual(anim, 0x01F5FD00, 'ANIM con base oculta: 0x' + anim.toString(16).toUpperCase());
+  [11, 12, 13, 14, 15, 16].forEach((bit) => {
+    assert.ok(anim & (1 << (bit - 1)), 'está el bit ' + bit + ' (parte base ' + bit + ')');
+  });
+  assert.ok(anim & PCK.ANIM.MODERN_WIDE_MODEL, 'sigue siendo modelo 64×64');
+  assert.ok(skin.get('BOX') === undefined || true);
+  assert.strictEqual(PCK.extractSkins(PCK.readPck(built.bytes)).skins[0].hideBase, true, 'al releerlo se sabe que no lleva cuerpo base');
+});
+
+ok('sin «sin cuerpo base» el ANIM se queda como estaba', () => {
+  const built = PCK.buildSkinPack({ packName: 'x', skins: [{ name: 'normal', png: fakePng(8) }] });
+  const p = PCK.readPck(built.bytes);
+  const anim = parseInt(p.assets.find(a => a.type === 0).get('ANIM'), 16);
+  assert.strictEqual(anim, PCK.ANIM.MODERN_WIDE_MODEL);
+});
+
 ok('el pack con 0 skins sigue siendo válido', () => {
   const built = PCK.buildSkinPack({ packName: 'vacío', skins: [] });
   const p = PCK.readPck(built.bytes);

@@ -313,6 +313,32 @@ Si la skin usaba el modelo estándar, el editor arranca con esas **12 cajas**; a
 skin pasa a tener modelo propio (el `XMLVERSION` sube a 3 si hay inflado) y el `INFO`/`BOX` del `.pck`
 se reescribe con lo que hay en pantalla.
 
+### Skins tipo personaje: quitar el muñeco de Steve (ANIM)
+
+Cuando el modelo **no es un jugador** (una criatura, un personaje de Blockbench con 40 px de alto,
+una máscara con cintas…) el problema es el de siempre: LCE dibuja **siempre** el muñeco base de Steve
+y tus cajas se suman encima. La solución oficial existe y son los **bits 11 a 16 de `ANIM`**, que
+apagan las seis cajas del jugador (`ANIM` bits 11-16 + bit 9 sin armadura + bits 21-25 de las capas 1.8):
+
+| Bit | Qué apaga |
+|---|---|
+| 11 | cabeza del muñeco base (y el casco) |
+| 12 / 13 | brazo derecho / izquierdo |
+| 14 | torso |
+| 15 / 16 | pierna derecha / izquierda |
+| 17 y 21-25 | capas 1.8: sombrero, mangas, chaqueta, pantalones |
+| 9 | toda la armadura |
+
+En las opciones de la skin hay una casilla **Sin cuerpo base (modelo propio)**: al marcarla el `.pck`
+sale con `ANIM = 0x01F5FD00` y en el juego **solo se ve tu geometría**. Se activa sola al soltar un
+`.bbmodel` que parece un personaje (más de 20 cajas o más alto/ancho que el jugador).
+
+![Modelo alto con encuadre automático](capturas/modelo-alto.png)
+
+Los modelos grandes además se **encuadran solos** en la vista 3D (centro y escala calculados con sus
+medidas), así que un personaje de 40 px se ve entero y no cortado; el jugador estándar se sigue viendo
+exactamente igual que antes.
+
 ### Mover la armadura en vez de ocultarla (`OFFSET`)
 
 Si la armadura no sobra sino que **se hunde** dentro de tu geometría, el parámetro `OFFSET` (TU33) la

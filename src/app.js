@@ -211,6 +211,7 @@
       if (skin) {
         skin.offsets = s.offsets && Object.keys(s.offsets).length ? Object.assign({}, s.offsets) : {};
         skin.hideArmor = !!s.hideArmor;
+        skin.hideBase = !!s.hideBase;
         skin.unfair = !!s.unfair;
       }
       // recupera la geometría personalizada (parámetros BOX) del pack original
@@ -706,10 +707,16 @@
       '<div class="be-flags">' +
         '<label class="arm"><input type="checkbox" id="hideArmorChk"' + (skin.hideArmor ? ' checked' : '') +
           '> Ocultar toda la armadura</label>' +
+        '<label class="arm"><input type="checkbox" id="hideBaseChk"' + (skin.hideBase ? ' checked' : '') +
+          ' title="Oculta el muñeco de Steve en el juego: la skin es solo tu modelo (ANIM bits 11-16)"> Sin cuerpo base (modelo propio)</label>' +
         '<label class="arm"><input type="checkbox" id="unfairChk"' + (skin.unfair ? ' checked' : '') +
           '> No válida en Battle Mode</label>' +
       '</div>' +
       '<div class="armor-hint">' +
+        (skin.hideBase
+          ? 'Marcado <b>sin cuerpo base</b>: en el juego solo se ve tu geometría, sin el muñeco de Steve.'
+          : 'Marca <b>sin cuerpo base</b> y desaparece el muñeco de Steve: solo queda tu modelo (para skins tipo personaje).') +
+        '<div style="height:6px"></div>' +
         (skin.model3d
           ? 'Si la armadura se hunde en tu geometría, súbela con el valor de esa pieza (p. ej. casco <b>-2</b> en una cabeza de 10). Funciona desde <b>TU33</b> (TU58 para las partes base).'
           : 'El <code>OFFSET</code> mueve la armadura del jugador; se aplica a la skin aunque no tenga modelo.') +
@@ -742,6 +749,14 @@
     });
     const hideChk = off.querySelector('#hideArmorChk');
     if (hideChk) hideChk.addEventListener('change', () => { skin.hideArmor = hideChk.checked; render(); });
+    const hideBaseChk = off.querySelector('#hideBaseChk');
+    if (hideBaseChk) hideBaseChk.addEventListener('change', () => {
+      skin.hideBase = hideBaseChk.checked;
+      render();
+      toast(skin.hideBase
+        ? 'El muñeco base desaparece: la skin será <b>solo tu modelo</b> (ANIM 0x' + (PCK.ANIM.HIDE_BASE_ALL | PCK.ANIM.HIDE_ARMOR).toString(16).toUpperCase() + ')'
+        : 'Vuelve el muñeco base de Steve', 'info');
+    });
     const unfairChk = off.querySelector('#unfairChk');
     if (unfairChk) unfairChk.addEventListener('change', () => { skin.unfair = unfairChk.checked; render(); });
   }
@@ -876,6 +891,7 @@
       xmlVersion: s.model3d ? s.model3d.xmlVersion : 0,
       offsets: s.offsets || null,
       hideArmor: !!s.hideArmor,
+      hideBase: !!s.hideBase,
       unfair: !!s.unfair
     }));
     const packId = clampInt(state.packId, 0, 0x00ffffff, PCK.randomPackId());
@@ -1607,6 +1623,21 @@
     };
   }
 
+  /** ¿el modelo sustituye al jugador (personaje) o solo le añade adornos? */
+  function modeloPropio(boxes) {
+    if (!boxes || !boxes.length) return false;
+    if (boxes.length > 20) return true;
+    let mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9];
+    boxes.forEach((b) => {
+      const ms = PCK.boxToModelSpace(b);
+      for (let i = 0; i < 3; i++) {
+        mn[i] = Math.min(mn[i], ms.min[i]);
+        mx[i] = Math.max(mx[i], ms.max[i]);
+      }
+    });
+    return mx[1] - mn[1] > 34 || mx[0] - mn[0] > 20 || mx[2] - mn[2] > 10;
+  }
+
   async function applyBbModelToSkin(skin, file) {
     const text = await file.text();
     const parsed = parseBbModel(text);
@@ -1622,6 +1653,13 @@
     };
     if (res.slim && skin.model === 'wide') skin.model = 'slim';
     if (!res.slim && skin.model === 'slim') skin.model = 'wide';
+    // ¿es un personaje con su propia geometría o una skin de jugador con adornos?
+    const propio = modeloPropio(res.boxes);
+    if (propio && !skin.hideBase) {
+      skin.hideBase = true;
+      toast('Parece un <b>modelo propio</b> (' + res.boxes.length + ' cajas): activo «sin cuerpo base» ' +
+        'para que en el juego solo se vea tu modelo. Se puede desmarcar en las opciones de la skin.', 'info');
+    }
     toast('Modelo <b>' + escapeHtml(file.name) + '</b>: ' + res.boxes.length + ' cajas · XMLVERSION ' + res.xmlVersion, 'ok');
     if (res.warnings.length) toast(res.warnings.length + ' aviso(s) del modelo: <span class="muted">' + escapeHtml(res.warnings[0].text) + '</span>', 'warn');
     return { skin, parsed, res };
@@ -2382,8 +2420,33 @@
   function drawModel3D(canvas, skin, opts) {
     opts = opts || {};
     const boxes = opts.boxes || (skin.model3d ? skin.model3d.boxes : []);
-    const scale = 9;
     const W = 420, H = 420;
+
+    // encuadre: el jugador estándar tiene su escala fija; los modelos más grandes
+    // (personajes de Blockbench, criaturas…) se centran y se escalan solos para que entren
+    let scale = 9, cx = 8, cy = 16;
+    if (boxes.length) {
+      let mn = [1e9, 1e9, 1e9], mx = [-1e9, -1e9, -1e9];
+      boxes.forEach((b) => {
+        const ms = PCK.boxToModelSpace(b);
+        const inf = (b.inflate || 0) / 2;
+        for (let i = 0; i < 3; i++) {
+          mn[i] = Math.min(mn[i], ms.min[i] - inf);
+          mx[i] = Math.max(mx[i], ms.max[i] + inf);
+        }
+      });
+      const estandar = mn[0] >= -8.6 && mx[0] <= 8.6 && mn[1] >= -0.6 && mx[1] <= 32.6 && mn[2] >= -4.6 && mx[2] <= 4.6;
+      if (!estandar) {
+        cx = (mn[0] + mx[0]) / 2;
+        cy = (mn[1] + mx[1]) / 2;
+        const alto = Math.max(1, mx[1] - mn[1]);
+        const ancho = Math.max(1, Math.max(mx[0] - mn[0], mx[2] - mn[2]));
+        const fondo = Math.max(1, mx[2] - mn[2]);
+        const escalaV = (H * 0.84) / (alto * 0.94 + fondo * 0.34);
+        const escalaH = (W * 0.84) / (ancho * 1.15 + fondo * 0.7);
+        scale = Math.max(1.2, Math.min(14, Math.min(escalaV, escalaH)));
+      }
+    }
     canvas.width = W; canvas.height = H;
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, W, H);
@@ -2393,7 +2456,6 @@
     const yaw = (opts.yaw == null ? Math.PI - 0.6 : opts.yaw), pitch = 0.34;   // de frente: se ve la cara y el lado derecho
     const cosY = Math.cos(yaw), sinY = Math.sin(yaw);
     const cosP = Math.cos(pitch), sinP = Math.sin(pitch);
-    const cx = 8, cy = 16;
     const project = (x, y, z) => {
       const px = x - cx, py = y - cy, pz = z;
       const rx = px * cosY - pz * sinY;
