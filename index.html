@@ -3966,26 +3966,70 @@ body.busy .dropzone { opacity: 0.7; }
     return porIndice;
   }
 
+  /** palabras sueltas del nombre ("forearm_left_0" → forearm, left) */
+  function palabrasDe(str) {
+    return String(str || '')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .split(/[^a-z]+/).filter(Boolean);
+  }
+
+  const KW = {
+    headwear: ['headwear', 'hat', 'hats', 'helmet', 'casco', 'hood', 'capucha', 'crown', 'corona',
+      'crest', 'cresta', 'plume', 'pluma', 'cap', 'gorra', 'sombrero', 'tiara', 'halo'],
+    head: ['head', 'cabeza', 'skull', 'craneo', 'face', 'cara', 'jaw', 'mandibula', 'mouth', 'boca',
+      'eye', 'eyes', 'ojo', 'ojos', 'hair', 'pelo', 'ear', 'ears', 'oreja', 'orejas', 'horn', 'horns',
+      'cuerno', 'cuernos', 'beak', 'pico', 'nose', 'nariz', 'tongue', 'lengua', 'teeth', 'dientes',
+      'eyebrow', 'ceja', 'brow', 'cheek', 'mejilla', 'headmain'],
+    jacket: ['jacket', 'chaqueta', 'coat', 'abrigo', 'suit'],
+    body: ['body', 'torso', 'cuerpo', 'chest', 'pecho', 'hip', 'hips', 'cadera', 'belly', 'barriga',
+      'wing', 'wings', 'ala', 'alas', 'tail', 'cola', 'neck', 'cuello', 'backpack', 'mochila'],
+    sleeve: ['sleeve', 'sleeves', 'manga', 'mangas'],
+    arm: ['arm', 'arms', 'brazo', 'brazos', 'forearm', 'antebrazo', 'hand', 'hands', 'mano', 'manos',
+      'finger', 'fingers', 'dedo', 'dedos', 'pad', 'pads', 'shoulder', 'shoulders', 'hombro', 'hombros',
+      'elbow', 'codo', 'wrist', 'muneca'],
+    pants: ['pants', 'pantalon', 'pantalones'],
+    leg: ['leg', 'legs', 'pierna', 'piernas', 'shin', 'espinilla', 'thigh', 'muslo', 'knee', 'rodilla',
+      'foot', 'feet', 'pie', 'pies', 'boot', 'boots', 'bota', 'botas', 'ankle', 'tobillo', 'toe', 'calcetin']
+  };
+  const T = (toks, lista) => toks.some((t) => lista.indexOf(t) >= 0);
+
   function guessBoxType(cubeName) {
     const n = normName(cubeName);
     if (!n) return null;
     if (BOX_ALIASES[n]) return BOX_ALIASES[n];
-    // heurísticas por subcadena, de lo más específico a lo más genérico
+    const toks = palabrasDe(cubeName);
+    const izquierda = toks.indexOf('left') >= 0 || toks.indexOf('izq') >= 0 || toks.indexOf('izquierda') >= 0;
+    const L = (cero, uno) => (izquierda ? uno : cero);
+    // primero por palabras enteras: «forearm» no es una oreja aunque lleve «ear» dentro
+    if (T(toks, KW.headwear)) return 'HEADWEAR';
+    if (T(toks, KW.head) && !T(toks, KW.arm)) return 'HEAD';
+    if (T(toks, KW.arm)) return L('ARM0', 'ARM1');
+    if (T(toks, KW.sleeve)) return L('SLEEVE0', 'SLEEVE1');
+    if (T(toks, KW.pants)) return L('PANTS0', 'PANTS1');
+    if (T(toks, KW.leg)) return L('LEG0', 'LEG1');
+    if (T(toks, KW.jacket)) return 'JACKET';
+    if (T(toks, KW.body)) return 'BODY';
+    // y si no, por subcadena (nombres pegados tipo «rightarmoverlay»)
     const has = (w) => n.includes(w);
-    const left = has('left') || has('izq');
-    const right = has('right') || has('der') || !left;
     if (has('headwear') || has('hat') || has('sombrero') || has('crest') || has('cresta') || has('plume') ||
+        has('helmet') || has('casco') || has('hood') || has('capucha') || has('crown') || has('corona') ||
         (has('head') && has('overlay'))) return 'HEADWEAR';
-    if (has('head') || has('cabeza')) return 'HEAD';
-    if (has('jacket') || has('chaqueta') || (has('body') && has('overlay'))) return 'JACKET';
+    if (has('head') || has('cabeza') || has('skull') || has('craneo') || has('face') || has('cara') ||
+        has('jaw') || has('mandibula') || has('mouth') || has('boca') || has('ojo') ||
+        has('hair') || has('pelo') || has('oreja') || has('cuerno') ||
+        has('beak') || has('pico') || has('nariz')) return 'HEAD';
+    if (has('jacket') || has('chaqueta') || has('coat') || has('abrigo') || (has('body') && has('overlay'))) return 'JACKET';
     if (has('waist') || has('cintura')) return 'WAIST';
-    if (has('body') || has('torso') || has('cuerpo')) return 'BODY';
-    // hombreras y similares: se dibujan como una caja más del brazo
-    if (has('pad') || has('shoulder') || has('hombro')) return left ? 'ARM1' : 'ARM0';
-    if (has('sleeve') || has('manga')) return left ? 'SLEEVE1' : 'SLEEVE0';
-    if (has('arm') || has('brazo')) return left ? 'ARM1' : 'ARM0';
-    if (has('pants') || has('pantalon')) return left ? 'PANTS1' : 'PANTS0';
-    if (has('leg') || has('pierna')) return left ? 'LEG1' : 'LEG0';
+    if (has('body') || has('torso') || has('cuerpo') || has('chest') || has('pecho') || has('hip') ||
+        has('cadera') || has('belly') || has('barriga') || has('wing') || has('cola')) return 'BODY';
+    if (has('pad') || has('shoulder') || has('hombro')) return L('ARM0', 'ARM1');
+    if (has('sleeve') || has('manga')) return L('SLEEVE0', 'SLEEVE1');
+    if (has('arm') || has('brazo') || has('hand') || has('mano') || has('finger') || has('dedo') ||
+        has('forearm') || has('antebrazo')) return L('ARM0', 'ARM1');
+    if (has('pants') || has('pantalon')) return L('PANTS0', 'PANTS1');
+    if (has('leg') || has('pierna') || has('shin') || has('espinilla') || has('thigh') || has('muslo') ||
+        has('knee') || has('rodilla') || has('foot') || has('boot') || has('bota')) return L('LEG0', 'LEG1');
     return null;
   }
 
@@ -4075,6 +4119,25 @@ body.busy .dropzone { opacity: 0.7; }
   function bbToBoxes(parsed, skin) {
     const warnings = [];
     const boxes = [];
+    // El .bbmodel dice en qué resolución están sus UV (`resolution`, p. ej. 128×128).
+    // La skin acaba en 64×64 (o 64×32), así que las coordenadas de textura hay que
+    // reescalarlas: si no, cada cara busca un trozo que no existe y el modelo sale
+    // en jirones (solo se pintan las cajas que caen dentro de la textura).
+    const res = parsed.resolution || null;
+    const escU = (res && Number(res.width) > 0 && skin && skin.w) ? skin.w / Number(res.width) : 1;
+    const escV = (res && Number(res.height) > 0 && skin && skin.h) ? skin.h / Number(res.height) : 1;
+    const uvEscalada = (uv) => {
+      if (!Array.isArray(uv)) return uv;
+      if (Math.abs(escU - 1) < 1e-9 && Math.abs(escV - 1) < 1e-9) return uv;
+      return [Math.round(Number(uv[0]) * escU), Math.round(Number(uv[1]) * escV)];
+    };
+    if ((Math.abs(escU - 1) > 1e-9 || Math.abs(escV - 1) > 1e-9) && skin) {
+      warnings.push({
+        level: 'info',
+        text: 'Textura del modelo ' + res.width + '×' + res.height + ' → skin ' + skin.w + '×' + skin.h +
+          ': las UV se reescalan (' + Number(escU.toFixed(3)) + '×)'
+      });
+    }
     const usedTypes = {};
     let needsV3 = false;
     let slim = false;
@@ -4094,9 +4157,13 @@ body.busy .dropzone { opacity: 0.7; }
       const grupo = (parsed.groupOf && parsed.groupOf[el.uuid]) || '';
       let type = guessBoxType(name) || (grupo ? guessBoxType(grupo) : null);
       let porGeometria = false;
-      if (!type && usarPosicion) {
-        type = porPosicion[idx] || null;
-        porGeometria = !!type;
+      // si el nombre no dice nada, se coloca por su posición: en un modelo sin nombres
+      // (o con un cubo dentro de una carpeta de nombre raro) mejor una caja en la parte
+      // que le toca que perder medio personaje
+      if (!type && (usarPosicion || grupo) && porPosicion[idx]) {
+        type = porPosicion[idx];
+        porGeometria = true;
+        detectados++;
       }
       if (!type) {
         warnings.push({
@@ -4107,11 +4174,9 @@ body.busy .dropzone { opacity: 0.7; }
         return;
       }
       if (porGeometria) {
-        detectados++;
-        void 0;
         warnings.push({
           level: 'info',
-          text: 'Cubo «' + (name || 'sin nombre') + '»: parte detectada por su posición → ' + type
+          text: 'Cubo «' + (name || grupo || 'sin nombre') + '»: nombre desconocido, colocado por su posición → ' + type
         });
       }
       const from = el.from, to = el.to;
@@ -4158,6 +4223,9 @@ body.busy .dropzone { opacity: 0.7; }
           warnings.push({ level: 'warn', text: 'Cubo «' + name + '»: sin UV, se usa 0,0' });
         }
       }
+
+      // la UV del .bbmodel está en la resolución del modelo, no en la de la skin
+      uv = uvEscalada(Array.isArray(uv) && uv.length >= 2 ? uv : [0, 0]);
 
       // por defecto, las capas overlay se ocultan con la armadura igual que en Java
       // el .bbmodel puede traer su propia máscara en `lce_armor` (lo usan los ejemplos)
@@ -4248,6 +4316,8 @@ body.busy .dropzone { opacity: 0.7; }
       const pv = ori.slice(0, 3).map((v) => Math.round(Number(v) || 0));
       // [0,24,0] es el origin por defecto de Blockbench: no significa «pivote propio»
       if (pv.every((v, i) => Math.abs(v - [0, 24, 0][i]) < 0.01)) return;
+      // si dos carpetas caen en el mismo tipo (head y jaw, leg y shin…), manda la primera
+      if (pivotes[tipo]) return;
       pivotes[tipo] = pv;
     });
     if (Object.keys(pivotes).length) skin.pivotes = pivotes;

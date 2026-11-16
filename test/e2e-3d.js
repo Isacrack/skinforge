@@ -84,7 +84,7 @@ function pngDataUrl(file) {
   await page.waitForFunction(() => document.querySelectorAll('.skin-card').length === 1, null, { timeout: 15000 });
   await page.waitForFunction(() => /Modelo:/.test(document.querySelector('.skin-card').textContent), null, { timeout: 15000 });
   const pill = await page.textContent('.skin-card .pill.model-on');
-  assert.ok(/12 cajas · XMLVERSION 2/.test(pill), 'pastilla del modelo: ' + pill);
+  assert.ok(/13 cajas · XMLVERSION 2/.test(pill), 'pastilla del modelo: ' + pill);
   const thumb = await page.getAttribute('.skin-card .skin-thumb img', 'src');
   assert.ok(thumb.startsWith('data:image/png'), 'la textura viene dentro del .bbmodel');
   console.log('  ✓ .bbmodel con textura embebida → skin con 12 cajas (XMLVERSION 2)');
@@ -93,9 +93,10 @@ function pngDataUrl(file) {
   await page.click('.skin-card .doll-btn');
   await page.waitForTimeout(600);
   const dollInfo = await page.textContent('#dollMeta');
-  assert.ok(/modelo 3D: 12 cajas/.test(dollInfo), 'meta del modal: ' + dollInfo);
+  assert.ok(/modelo 3D: 13 cajas/.test(dollInfo), 'meta del modal: ' + dollInfo);
   const note = await page.textContent('#dollNote');
-  assert.ok(/tail/.test(note), 'aviso del cubo ignorado: ' + note);
+  // el cubo raro ya no se tira: se coloca en la parte que le toca por su nombre o su posición
+  assert.ok(/Avisos del modelo/.test(note), 'el modal lista los avisos del modelo');
   const painted = await page.evaluate(() => {
     const c = document.querySelector('#dollCanvas');
     const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
@@ -118,7 +119,7 @@ function pngDataUrl(file) {
   assert.strictEqual(parsed.xmlVersion, 2, 'XMLVERSION 2 en la cabecera');
   const skin = parsed.assets.find((a) => a.type === 0);
   const boxes = skin.params.filter((p) => p[0] === 'BOX').map((p) => p[1]);
-  assert.strictEqual(boxes.length, 12, 'doce cajas BOX');
+  assert.strictEqual(boxes.length, 13, 'trece cajas BOX (12 del jugador + la cola)');
   const expect = {
     'HEAD -5 -10 -5 10 10 10 0 0': 'cabeza agrandada',
     'HEADWEAR -5 -10 -5 10 10 10 32 0 1 0': 'sombrero (oculto con casco)',
@@ -184,7 +185,7 @@ function pngDataUrl(file) {
   await page.click('.skin-card .doll-btn');
   await page.waitForTimeout(400);
   const filas = await page.locator('.box-row').count();
-  assert.strictEqual(filas, 12, 'una fila por caja en el editor');
+  assert.strictEqual(filas, 13, 'una fila por caja en el editor');
   // el sombrero trae «casco» marcado y la chaqueta «peto»
   const hatBits = await page.evaluate(() => {
     const row = [...document.querySelectorAll('.box-row')].find((r) => r.querySelector('.be-type').textContent === 'HEADWEAR');
@@ -237,7 +238,7 @@ function pngDataUrl(file) {
   await page.click('#clearBtn');
   await page.waitForFunction(() => document.querySelectorAll('.skin-card').length === 0, null, { timeout: 5000 });
   await page.setInputFiles('#fileInput', p1);
-  await page.waitForFunction(() => /Modelo: 12 cajas/.test(document.querySelector('.skin-card .pill.model-on')?.textContent || ''), null, { timeout: 15000 });
+  await page.waitForFunction(() => /Modelo: 13 cajas/.test(document.querySelector('.skin-card .pill.model-on')?.textContent || ''), null, { timeout: 15000 });
   const xmlSel = await page.inputValue('#xmlVersion');
   assert.strictEqual(xmlSel, '2', 'el XMLVERSION del pack importado pasa al ajuste avanzado');
   const [dl7] = await Promise.all([page.waitForEvent('download'), page.click('#downloadBtn')]);
@@ -248,7 +249,7 @@ function pngDataUrl(file) {
   assert.strictEqual(parsed7.xmlVersion, 2);
   const boxes7 = parsed7.assets.find((a) => a.type === 0).params.filter((x) => x[0] === 'BOX').map((x) => x[1]);
   assert.deepStrictEqual(boxes7.sort(), boxes.slice().sort(), 'los BOX sobreviven al ciclo importar → exportar');
-  console.log('  ✓ ciclo importar/exportar conserva las 12 cajas y el XMLVERSION');
+  console.log('  ✓ ciclo importar/exportar conserva las 13 cajas y el XMLVERSION');
 
   /* 8. cubos con decimales: el juego trunca a enteros, así que se redondea antes */
   await page.click('#clearBtn');
@@ -630,7 +631,7 @@ function pngDataUrl(file) {
   await page.waitForFunction(() => document.querySelectorAll('.skin-card').length === 1, null, { timeout: 15000 });
   await page.waitForFunction(() => /Modelo:/.test(document.querySelector('.skin-card').textContent), null, { timeout: 15000 });
   assert.strictEqual(await page.locator('.skin-card').count(), 1, 'PNG + .bbmodel → UNA sola skin, no dos');
-  assert.ok(/12 cajas/.test(await page.textContent('.skin-card .pill.model-on')), 'el modelo se aplica a la skin');
+  assert.ok(/13 cajas/.test(await page.textContent('.skin-card .pill.model-on')), 'el modelo se aplica a la skin');
   const thumbVerde = await page.evaluate(() => {
     const img = document.querySelector('.skin-card .skin-thumb img');
     const c = document.createElement('canvas');
@@ -675,10 +676,10 @@ function pngDataUrl(file) {
   await page.waitForFunction(() => document.querySelector('#dollCanvas')._lce3d, null, { timeout: 15000 });
   await page.waitForTimeout(300);
   const sumGeo = await page.textContent('#geoSummary');
-  assert.ok(/12 cajas/.test(sumGeo), 'la geometría anuncia las cajas: ' + sumGeo);
+  assert.ok(/13 cajas/.test(sumGeo), 'la geometría anuncia las cajas: ' + sumGeo);
   await page.click('#geoSummary');
   await page.waitForTimeout(200);
-  assert.strictEqual(await page.locator('.geo-row').count(), 12, 'el modelo estándar tiene 12 cajas editables');
+  assert.strictEqual(await page.locator('.geo-row').count(), 13, 'el modelo trae 13 cajas editables');
 
   // el ancho de la cabeza: Mayús+flecha derecha (no hay campos de números)
   const anchoNuevo = await page.evaluate(() => {
@@ -691,14 +692,14 @@ function pngDataUrl(file) {
   await page.keyboard.press('Shift+ArrowRight');
   await page.waitForTimeout(400);
   const metaGeo = await page.textContent('#dollMeta');
-  assert.ok(/modelo 3D: 12 cajas/.test(metaGeo), 'el modal sabe que hay modelo propio: ' + metaGeo);
+  assert.ok(/modelo 3D: 13 cajas/.test(metaGeo), 'el modal sabe que hay modelo propio: ' + metaGeo);
 
   const [descargaGeo] = await Promise.all([page.waitForEvent('download'), page.click('#geoDl')]);
   const rutaGeo = path.join(OUT, 'geometria.bbmodel');
   await descargaGeo.saveAs(rutaGeo);
   const modelo = JSON.parse(fs.readFileSync(rutaGeo, 'utf8'));
   assert.strictEqual(modelo.meta.format_version, '5.0', 'el .bbmodel es de Blockbench 5');
-  assert.strictEqual(modelo.elements.length, 12, 'salen las 12 cajas');
+  assert.strictEqual(modelo.elements.length, 13, 'salen las 13 cajas');
   const cabeza = modelo.elements.find((e) => e.name === 'head');
   assert.strictEqual(cabeza.to[0] - cabeza.from[0], anchoNuevo, 'la cabeza va con el ancho que pusimos: ' + (cabeza.to[0] - cabeza.from[0]));
   assert.strictEqual(modelo.outliner.length, 6, 'el outliner lleva las 6 carpetas');
@@ -706,10 +707,10 @@ function pngDataUrl(file) {
   await page.selectOption('#geoAddType', 'HEADWEAR');
   await page.click('#geoAddBtn');
   await page.waitForTimeout(400);
-  assert.strictEqual(await page.locator('.geo-row').count(), 13, 'se puede añadir una caja');
+  assert.strictEqual(await page.locator('.geo-row').count(), 14, 'se puede añadir una caja');
   await page.locator('.geo-row').last().locator('.del').click();
   await page.waitForTimeout(300);
-  assert.strictEqual(await page.locator('.geo-row').count(), 12, 'y borrarla');
+  assert.strictEqual(await page.locator('.geo-row').count(), 13, 'y borrarla');
 
   await page.locator('#dollCanvas').screenshot({ path: path.join(OUT, 'shot-geometria.png') });
   await page.click('#dollClose');
@@ -1189,6 +1190,82 @@ function pngDataUrl(file) {
   const nombres = await page.$$eval('.skin-card [data-role="name"]', (els) => els.map((e) => e.value));
   assert.deepStrictEqual(nombres, ['Uno', 'Dos'], 'una tarjeta por modelo: ' + JSON.stringify(nombres));
   console.log('  ✓ dos .bbmodel con la misma textura externa: no se pisan');
+
+  /* 20. textura de 128×128 en un .bbmodel y skin de 64×64: las UV se reescalan */
+  const { encodePng: enc3 } = require('./mkskins.js');
+  const mitad = enc3(64, 64, (x, y) => ((x >= 8 && x < 40 && y >= 8 && y < 24) ? [40, 210, 70, 255] : [230, 30, 30, 255]));
+  const res128 = standardModel({ name: 'Res 128', textureB64: 'data:image/png;base64,' + mitad.toString('base64') });
+  res128.resolution = { width: 128, height: 128 };          // como un modelo de entidad de Java
+  res128.elements = [{ name: 'head', from: [-4, 24, -4], to: [4, 32, 4], origin: [0, 24, 0], uv_offset: [16, 16], box_uv: true }];
+  const resPath = path.join(OUT, 'res-128.bbmodel');
+  fs.writeFileSync(resPath, JSON.stringify(res128));
+  await page.click('#clearBtn');
+  await page.waitForFunction(() => document.querySelectorAll('.skin-card').length === 0, null, { timeout: 5000 });
+  await page.setInputFiles('#fileInput', resPath);
+  await page.waitForFunction(() => /Modelo:/.test(document.querySelector('.skin-card')?.textContent || ''), null, { timeout: 15000 });
+  const [dlRes] = await Promise.all([page.waitForEvent('download'), page.click('#downloadBtn')]);
+  const pRes = path.join(OUT, 'res-128.pck');
+  await dlRes.saveAs(pRes);
+  const bRes = fs.readFileSync(pRes);
+  const parsedRes = PCK.readPck(bRes.buffer.slice(bRes.byteOffset, bRes.byteOffset + bRes.byteLength));
+  const boxRes = parsedRes.assets.find((a) => a.type === 0).params.filter((x) => x[0] === 'BOX').map((x) => x[1])[0];
+  const uvRes = boxRes.split(' ').slice(6, 8).map(Number);
+  assert.deepStrictEqual(uvRes, [8, 8], 'UV de 128×128 reescalada a la mitad: ' + boxRes);
+  await page.click('.skin-card .doll-btn');
+  await page.waitForFunction(() => document.querySelector('#dollCanvas')._lce3d, null, { timeout: 15000 });
+  await page.waitForTimeout(500);
+  const avisoRes = await page.textContent('#dollNote');
+  assert.ok(/reescalan/.test(avisoRes), 'el modal explica el reescalado de UV: ' + avisoRes.slice(0, 120));
+  await page.click('#dollClose');
+  console.log('  ✓ textura 128×128 en skin 64×64: las UV se reescalan (' + boxRes + ')');
+
+  /* 21. nombres que no son del jugador (jaw, shin_left, forearm_left) no se pierden */
+  const raros = standardModel({ name: 'Con huesos raros', textureB64: 'data:image/png;base64,' + b64.split(',')[1] ? 'data:image/png;base64,' + fs.readFileSync(path.join(OUT, 'steve.png')).toString('base64') : '' });
+  raros.elements = [
+    { name: 'head', from: [-4, 24, -4], to: [4, 32, 4], origin: [0, 24, 0], uv_offset: [0, 0], box_uv: true },
+    { name: 'jaw', from: [-4, 20, -4], to: [4, 24, 4], origin: [0, 24, 0], uv_offset: [0, 0], box_uv: true },
+    { name: 'body', from: [-4, 12, -2], to: [4, 24, 2], origin: [0, 24, 0], uv_offset: [16, 16], box_uv: true },
+    { name: 'forearm_left', from: [-8, 12, -2], to: [-4, 24, 2], origin: [-5, 22, 0], uv_offset: [40, 16], box_uv: true },
+    { name: 'forearm_right', from: [4, 12, -2], to: [8, 24, 2], origin: [5, 22, 0], uv_offset: [32, 48], box_uv: true },
+    { name: 'shin_left', from: [-4, 0, -2], to: [0, 12, 2], origin: [-2, 12, 0], uv_offset: [0, 16], box_uv: true },
+    { name: 'shin_right', from: [0, 0, -2], to: [4, 12, 2], origin: [2, 12, 0], uv_offset: [16, 48], box_uv: true }
+  ];
+  raros.groups = [
+    { name: 'head', uuid: 'gh', origin: [0, 24, 0], children: ['eh'] },
+    { name: 'jaw', uuid: 'gj', origin: [0, 24, 0], children: ['ej'] },
+    { name: 'body', uuid: 'gb', origin: [0, 24, 0], children: ['eb'] },
+    { name: 'forearm_left', uuid: 'gfl', origin: [-5, 22, 0], children: ['efl'] },
+    { name: 'forearm_right', uuid: 'gfr', origin: [5, 22, 0], children: ['efr'] },
+    { name: 'shin_left', uuid: 'gsl', origin: [-2, 12, 0], children: ['esl'] },
+    { name: 'shin_right', uuid: 'gsr', origin: [2, 12, 0], children: ['esr'] }
+  ];
+  ['eh', 'ej', 'eb', 'efl', 'efr', 'esl', 'esr'].forEach((u, i) => { raros.elements[i].uuid = u; });
+  raros.outliner = [
+    { name: 'head', uuid: 'gh', children: ['eh'] },
+    { name: 'jaw', uuid: 'gj', children: ['ej'] },
+    { name: 'body', uuid: 'gb', children: ['eb'] },
+    { name: 'forearm_left', uuid: 'gfl', children: ['efl'] },
+    { name: 'forearm_right', uuid: 'gfr', children: ['efr'] },
+    { name: 'shin_left', uuid: 'gsl', children: ['esl'] },
+    { name: 'shin_right', uuid: 'gsr', children: ['esr'] }
+  ];
+  const rarosPath = path.join(OUT, 'huesos-raros.bbmodel');
+  fs.writeFileSync(rarosPath, JSON.stringify(raros));
+  await page.click('#clearBtn');
+  await page.waitForFunction(() => document.querySelectorAll('.skin-card').length === 0, null, { timeout: 5000 });
+  await page.setInputFiles('#fileInput', rarosPath);
+  await page.waitForFunction(() => /Modelo:/.test(document.querySelector('.skin-card')?.textContent || ''), null, { timeout: 15000 });
+  const pillRaros = await page.textContent('.skin-card .pill.model-on');
+  assert.ok(/7 cajas/.test(pillRaros), 'las siete cajas entran (mandíbula y espinillas incluidas): ' + pillRaros);
+  await page.click('.skin-card .doll-btn');
+  await page.waitForFunction(() => document.querySelector('#dollCanvas')._lce3d, null, { timeout: 15000 });
+  await page.evaluate(() => { document.querySelector('#geoDetails').open = true; });
+  await page.waitForTimeout(300);
+  const tiposRaros = await page.evaluate(() => [...document.querySelectorAll('.geo-part select')].map((s) => s.value));
+  assert.deepStrictEqual(tiposRaros.slice().sort(), ['ARM0', 'ARM1', 'BODY', 'HEAD', 'HEAD', 'LEG0', 'LEG1'],
+    'mandíbula → HEAD, antebrazos → ARM, espinillas → LEG: ' + tiposRaros.join(','));
+  await page.click('#dollClose');
+  console.log('  ✓ huesos con nombres raros (jaw, shin_left, forearm_left) se colocan, no se pierden');
 
   assert.deepStrictEqual(errors, [], 'errores de consola: ' + errors.join(' | '));
   console.log('\nE2E MODELO 3D OK');

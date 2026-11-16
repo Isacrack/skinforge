@@ -109,6 +109,17 @@ el modal escribe en la línea de datos qué fichero estás viendo (`modelo 3D: 1
 La vista 3D está orientada **como en el juego**: el brazo derecho del jugador (las cajas de `x` negativa)
 se ve a tu izquierda, de modo que el muñeco no sale espejado.
 
+**Modelos de entidad (textura de 128×128).** Si el `.bbmodel` está hecho para una textura más grande que
+la skin (la del juego acaba en 64×64), las coordenadas de textura se **reescalan solas** al importar: el
+modal lo apunta en los avisos. Sin eso, cada cara buscaba un trozo de textura que no existe y el
+personaje salía en jirones.
+
+**Huesos con nombres que no son del jugador.** `jaw`, `shin_left`, `forearm_left`, `hat`, `wing`… se
+colocan en la parte que les toca por su nombre (mandíbula → `HEAD`, espinilla → `LEG`, antebrazo →
+`ARM`); y si el nombre no dice nada pero el cubo está dentro de una carpeta, se reparte por su posición.
+Las cajas **no se tiran**: en la lista de avisos del modal ves qué se hizo con cada una, y siempre
+puedes cambiarla a mano en la geometría.
+
 ![Modelo del caballero pintado con la textura de tu PNG](capturas/png-mas-modelo.png)
 
 ### Qué se puede y qué no
