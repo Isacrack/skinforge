@@ -120,6 +120,18 @@ colocan en la parte que les toca por su nombre (mandíbula → `HEAD`, espinilla
 Las cajas **no se tiran**: en la lista de avisos del modal ves qué se hizo con cada una, y siempre
 puedes cambiarla a mano en la geometría.
 
+**«No compatible» cuando el modelo no cabe.** Cada skin con `.bbmodel` lleva su veredicto al lado:
+
+- **✓ Compatible** — todas las cajas entran tal cual en el formato del juego.
+- **⚠ Compatible con avisos** — entra, pero el juego lo aproxima: cubos girados (LCE no rota cajas),
+  decimales que se truncan, texturas de otra resolución que se reescalan o cajas muy lejos del cuerpo.
+  El modal (`3D`) lista cada motivo en «El juego lo aproxima».
+- **✕ No compatible** — hay cubos que **no se pueden guardar** en el `.pck` y en la PS3 faltarían.
+  Además de la pastilla roja de la tarjeta (con los motivos al pasar el ratón), sale un aviso al
+  cargar el fichero y un recuadro rojo en el modal que dice qué cubos se quedan fuera y cómo
+  arreglarlo (renombrarlos con su parte). Si no se salva **ninguna** caja, el `.bbmodel` se rechaza
+  con el mismo aviso y no deja una tarjeta a medias.
+
 ![Modelo del caballero pintado con la textura de tu PNG](capturas/png-mas-modelo.png)
 
 ### Qué se puede y qué no

@@ -401,6 +401,20 @@ body.busy .dropzone { opacity: 0.7; }
 .doll-note:empty { display: none; }
 .doll-note ul { margin: 6px 0 0; padding-left: 16px; display: grid; gap: 3px; }
 .doll-note b { color: var(--gold); font-weight: 600; }
+/* ------------------- ¿el modelo cabe en el formato del juego? --------- */
+.compat { display: grid; gap: 4px; margin: 0 0 8px; padding: 8px 10px; border-radius: 9px;
+  font-size: 0.74rem; line-height: 1.45; text-align: left; border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03); }
+.compat b { font-size: 0.8rem; color: var(--text); }
+.compat ul { margin: 0; padding-left: 16px; display: grid; gap: 2px; color: var(--muted); }
+.compat span { color: var(--muted); }
+.compat-bad { border-color: rgba(255, 90, 90, 0.55); background: rgba(255, 60, 60, 0.09); }
+.compat-bad b { color: #ffd0d0; }
+.compat-warn { border-color: rgba(255, 196, 84, 0.45); background: rgba(255, 196, 84, 0.07); }
+.compat-warn b { color: var(--gold); }
+.compat-ok { border-color: rgba(120, 220, 140, 0.4); background: rgba(120, 220, 140, 0.06); }
+.compat-ok b { color: #b8f0c4; }
+.pill.no-compat { font-weight: 600; }
 #dollCanvas { max-height: 46vh; }
 
 /* --------------------- editor de cajas / armadura -------------------- */
@@ -428,7 +442,7 @@ body.busy .dropzone { opacity: 0.7; }
 .pill.warn-pill { color: #ffe1a8; border-color: rgba(230, 170, 60, 0.5); background: rgba(230, 170, 60, 0.14); }
 .overlay.with-boxes #dollCanvas { max-height: 30vh; margin: 0 auto; }
 .overlay.with-boxes .box-editor { justify-self: stretch; }
-.overlay.with-boxes .doll-note { max-height: 12vh; overflow-y: auto; }
+.overlay.with-boxes .doll-note { max-height: 22vh; overflow-y: auto; scrollbar-width: thin; }
 
 /* tarjeta de ayuda de armadura */
 .armor-help { display: grid; gap: 8px; font-size: 0.82rem; color: var(--muted); line-height: 1.5; }

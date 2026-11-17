@@ -70,6 +70,16 @@ function pngDataUrl(file) {
   const modelSlimPath = path.join(OUT, 'player-slim.bbmodel');
   fs.writeFileSync(modelSlimPath, JSON.stringify(standardModel({ textureB64: b64, slim: true, name: 'Player Slim' })));
 
+  /* modelo que no cabe en el formato del juego: una caja que no es ninguna parte
+     del jugador y un cubo girado (el .pck no sabe rotar cajas) */
+  const badModel = standardModel({ textureB64: b64, name: 'Modelo roto' });
+  // una caja que no es ninguna parte del jugador: se queda fuera del .pck
+  badModel.elements.push({ name: 'objeto_raro', from: [-40, -30, -40], to: [-30, -20, -30], origin: [0, 0, 0], uv_offset: [0, 0], box_uv: true });
+  // y un cubo girado: el formato del juego no sabe rotar cajas
+  badModel.elements.find((e) => e.name === 'hat').rotation = [25, 0, 0];
+  const modelBadPath = path.join(OUT, 'incompatible.bbmodel');
+  fs.writeFileSync(modelBadPath, JSON.stringify(badModel));
+
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, acceptDownloads: true });
   const errors = [];
@@ -1266,6 +1276,65 @@ function pngDataUrl(file) {
     'mandíbula → HEAD, antebrazos → ARM, espinillas → LEG: ' + tiposRaros.join(','));
   await page.click('#dollClose');
   console.log('  ✓ huesos con nombres raros (jaw, shin_left, forearm_left) se colocan, no se pierden');
+
+  /* 22. modelo que NO es compatible: la página lo dice, no falla en silencio */
+  await page.click('#clearBtn');
+  await page.waitForFunction(() => document.querySelectorAll('.skin-card').length === 0, null, { timeout: 5000 });
+  await page.setInputFiles('#fileInput', modelBadPath);
+  await page.waitForFunction(() => /Modelo:/.test(document.querySelector('.skin-card')?.textContent || ''), null, { timeout: 15000 });
+  const pillBad = await page.textContent('.skin-card .pill.no-compat');
+  assert.ok(/No compatible/.test(pillBad), 'la tarjeta avisa de la incompatibilidad: ' + pillBad);
+  const tipBad = await page.getAttribute('.skin-card .pill.no-compat', 'title');
+  assert.ok(/NO compatible/.test(tipBad) && /objeto_raro/.test(tipBad), 'la pastilla lista el motivo: ' + tipBad);
+  const toastBad = await page.evaluate(() =>
+    [...document.querySelectorAll('#toasts .toast.error')].map((t) => t.textContent).join(' | '));
+  assert.ok(/No compatible/.test(toastBad), 'también sale el aviso al cargarlo: ' + toastBad);
+  // y en el modal, con el motivo escrito y el consejo de arreglo
+  await page.click('.skin-card .doll-btn');
+  await page.waitForFunction(() => document.querySelector('#dollCanvas')._lce3d, null, { timeout: 15000 });
+  await page.waitForTimeout(300);
+  const noteBad = await page.textContent('#dollNote');
+  assert.ok(/no es compatible/i.test(noteBad), 'el modal lo dice claro: ' + noteBad.slice(0, 160));
+  assert.ok(/objeto_raro/.test(noteBad), 'el modal lista los cubos que se pierden: ' + noteBad.slice(0, 220));
+  assert.ok(/gira/.test(noteBad), 'el modal avisa del cubo girado: ' + noteBad.slice(0, 220));
+  const cajaBad = await page.evaluate(() => document.querySelector('#dollNote').querySelector('.compat-bad') !== null);
+  assert.ok(cajaBad, 'el aviso va en su caja roja (.compat-bad)');
+  await page.locator('#dollOverlay').screenshot({ path: path.join(OUT, 'shot-no-compatible.png') });
+  await page.click('#dollClose');
+  // en el .pck la espada no puede estar: 13 cajas (las 12 del jugador + el cubo suelto)
+  const [dlBad] = await Promise.all([page.waitForEvent('download'), page.click('#downloadBtn')]);
+  const pBad = path.join(OUT, 'modelo-no-compatible.pck');
+  await dlBad.saveAs(pBad);
+  const bufBad = fs.readFileSync(pBad);
+  const parsedBad = PCK.readPck(bufBad.buffer.slice(bufBad.byteOffset, bufBad.byteOffset + bufBad.byteLength));
+  const skinBad = parsedBad.assets.find((a) => a.type === 0);
+  const boxesBad = skinBad.params.filter((p) => p[0] === 'BOX').map((p) => p[1]);
+  assert.strictEqual(boxesBad.length, 13, 'el .pck guarda 13 cajas: la caja rara se queda fuera aunque el modelo traiga 14: ' + boxesBad.length);
+  console.log('  ✓ modelo no compatible: «No compatible» en la tarjeta, motivo en el modal y en el toast');
+  // y un modelo correcto vuelve a salir como compatible
+  await page.click('#clearBtn');
+  await page.waitForFunction(() => document.querySelectorAll('.skin-card').length === 0, null, { timeout: 5000 });
+  await page.setInputFiles('#fileInput', modelPath);
+  await page.waitForFunction(() => /Modelo:/.test(document.querySelector('.skin-card')?.textContent || ''), null, { timeout: 15000 });
+  const pillOk = await page.textContent('.skin-card .pill.ok-pill');
+  assert.ok(/Compatible/.test(pillOk), 'el modelo bueno sale como compatible: ' + pillOk);
+  console.log('  ✓ modelo correcto: pastilla «✓ Compatible»');
+
+  /* 23. .bbmodel que no es un modelo (sin cubos): también dice «No compatible» */
+  const nadaPath = path.join(OUT, 'nada-compatible.bbmodel');
+  fs.writeFileSync(nadaPath, JSON.stringify({ meta: { format_version: '4.10' }, name: 'Sin cubos', elements: [], outliner: [] }));
+  await page.click('#clearBtn');
+  await page.waitForFunction(() => document.querySelectorAll('.skin-card').length === 0, null, { timeout: 5000 });
+  await page.setInputFiles('#fileInput', nadaPath);
+  await page.waitForFunction(() => [...document.querySelectorAll('#toasts .toast.error')]
+    .some((t) => /No compatible/.test(t.textContent)), null, { timeout: 15000 });
+  const toastNada = await page.evaluate(() =>
+    [...document.querySelectorAll('#toasts .toast.error')].map((t) => t.textContent).join(' | '));
+  assert.ok(/No compatible/.test(toastNada) && /no tiene cubos/i.test(toastNada),
+    'aviso al soltar un .bbmodel que no es un modelo: ' + toastNada);
+  const tarjetasNada = await page.evaluate(() => document.querySelectorAll('.skin-card').length);
+  assert.strictEqual(tarjetasNada, 0, 'no se queda una tarjeta a medias: ' + tarjetasNada);
+  console.log('  ✓ .bbmodel que no es un modelo: aviso «No compatible» y ninguna tarjeta a medias');
 
   assert.deepStrictEqual(errors, [], 'errores de consola: ' + errors.join(' | '));
   console.log('\nE2E MODELO 3D OK');

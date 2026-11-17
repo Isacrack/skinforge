@@ -316,10 +316,14 @@
       (libres.length === 1 ? libres[0] : null);                            // única PNG del lote
 
     let skin = null;
+    let skinCreada = false;   // la tarjeta nace con este .bbmodel: si no sirve, no se queda vacía
     if (png) {
       consumidos.add(png);
       skin = state.skins.find((x) => x.src === png.name) || null;
-      if (!skin) skin = await addSkinFromBlob(png, { name: parsed.name || base(png.name) || baseModelo, src: png.name });
+      if (!skin) {
+        skin = await addSkinFromBlob(png, { name: parsed.name || base(png.name) || baseModelo, src: png.name });
+        skinCreada = true;
+      }
       if (parsed.textureUrl) {
         toast('Modelo + PNG: se usa <code>' + escapeHtml(png.name) + '</code> como textura (no la incrustada en el .bbmodel)', 'ok');
       }
@@ -330,6 +334,7 @@
       if (skin) toast('Modelo <b>' + escapeHtml(file.name) + '</b> → skin <b>' + escapeHtml(skin.name) + '</b>', 'ok');
       if (!skin) {
         skin = await addSkinFromBlob(dataUrlToBlob(parsed.textureUrl), { name: parsed.name || baseModelo, src: file.name });
+        skinCreada = true;
         if (state.skins.filter((x) => !x.model3d).length) {
           toast('Modelo con su propia textura. Para ver <b>tu PNG</b> con esta geometría, suéltalos <b>juntos</b> ' +
             '(o carga la PNG antes de soltar el <code>.bbmodel</code>).', 'info');
@@ -356,11 +361,26 @@
         c.width = 64; c.height = 64;
         const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
         skin = await addSkinFromBlob(blob, { name: parsed.name || baseModelo, src: file.name });
+        skinCreada = true;
         toast('El <code>.bbmodel</code> apunta a <code>' + escapeHtml(parsed.textureName || 'una textura externa') +
           '</code>: suéltala junto al modelo, o carga la PNG antes', 'warn');
       }
     }
-    await applyBbModelToSkin(skin, file);
+    try {
+      await applyBbModelToSkin(skin, file);
+    } catch (err) {
+      // el modelo no ha aportado ni una caja: mejor decirlo claro que dejar una tarjeta a medias
+      if (skinCreada && !skin.model3d) {
+        const i = state.skins.indexOf(skin);
+        if (i >= 0) state.skins.splice(i, 1);
+        toast('<b>No compatible</b>: ninguna caja de <code>' + escapeHtml(file.name) +
+          '</code> encaja en el formato del juego. Renombra las cajas con su parte ' +
+          '(<code>head</code>, <code>body</code>, <code>right_arm</code>, <code>left_arm</code>, ' +
+          '<code>right_leg</code>, <code>left_leg</code>) y vuelve a soltarlo.', 'error');
+        return;
+      }
+      throw err;
+    }
   }
 
   /* ---------------------------- entrada ficheros ------------------------ */
@@ -385,8 +405,12 @@
         else toast('Formato no soportado: <code>' + file.name + '</code>', 'warn');
       } catch (err) {
         errors++;
-        console.error(err);
-        toast('<b>' + file.name + '</b>: ' + err.message, 'error');
+        const esModelo = /\.bbmodel$/.test(lower);
+        // un .bbmodel que no vale es algo que el usuario puede arreglar: no es un fallo de la página
+        if (esModelo) console.warn(err); else console.error(err);
+        toast(esModelo
+          ? '<b>No compatible</b>: <code>' + escapeHtml(file.name) + '</code> — ' + escapeHtml(err.message)
+          : '<b>' + file.name + '</b>: ' + err.message, 'error');
       }
     }
     state.busy = false;
@@ -410,6 +434,21 @@
     renderList();
     renderSettings();
     renderSummary();
+  }
+
+  /** pastilla que dice si el modelo cabe en el formato del juego */
+  function compatPillHtml(compat) {
+    const c = compat || { estado: 'ok', motivos: [], aproximaciones: [] };
+    if (c.estado === 'incompatible') {
+      const tip = 'NO compatible con el formato del juego\n' + c.motivos.slice(0, 8).join('\n') +
+        (c.motivos.length > 8 ? '\n…' : '');
+      return '<span class="pill danger no-compat" title="' + escapeAttr(tip) + '">✕ No compatible</span>';
+    }
+    if (c.estado === 'avisos') {
+      const tip = 'Compatible, pero el juego aproxima el modelo:\n' + c.aproximaciones.join('\n');
+      return '<span class="pill warn-pill" title="' + escapeAttr(tip) + '">⚠ Compatible con avisos</span>';
+    }
+    return '<span class="pill ok-pill" title="Todo el modelo cabe en el formato del juego">✓ Compatible</span>';
   }
 
   function renderList() {
@@ -450,6 +489,7 @@
             <span class="pill${skin.model3d ? ' model-on' : ''}">${skin.model3d
               ? 'Modelo: ' + skin.model3d.boxes.length + ' cajas · ' + (skin.model3d.xmlVersion ? 'XMLVERSION ' + skin.model3d.xmlVersion : 'sin XMLVERSION')
               : 'Modelo 3D: no'}</span>
+            ${skin.model3d ? compatPillHtml(skin.model3d.compat) : ''}
             <button class="btn sm ghost" data-role="bbmodel">${skin.model3d ? 'Cambiar .bbmodel' : '+ .bbmodel'}</button>
             ${skin.model3d && skin.model3d.boxes.some((b) => b.armor) ? '<span class="pill warn-pill" title="Cajas que se ocultan al llevar armadura">armadura: ' + skin.model3d.boxes.filter((b) => b.armor).length + ' ocultables</span>' : ''}
             ${skin.model3d ? '<button class="icon-btn del" data-role="bbclear" title="Quitar modelo 3D">✕</button>' : ''}
@@ -873,7 +913,29 @@
         'XMLVERSION ' + skin.model3d.xmlVersion;
       if (note) {
         const w = skin.model3d.warnings || [];
-        note.innerHTML = (w.length
+        const comp = skin.model3d.compat || { estado: 'ok', motivos: [], aproximaciones: [] };
+        let bloqueComp = '';
+        const lista = (arr, tope) => '<ul>' +
+          arr.slice(0, tope).map((t) => '<li>' + escapeHtml(t) + '</li>').join('') +
+          (arr.length > tope ? '<li>…y ' + (arr.length - tope) + ' más</li>' : '') + '</ul>';
+        if (comp.estado === 'incompatible') {
+          bloqueComp = '<div class="compat compat-bad"><b>✕ Este modelo no es compatible con el formato del juego</b>' +
+            lista(comp.motivos, 6) +
+            '<span>' + comp.motivos.length + ' cubo(s) no se pueden guardar en el <code>.pck</code>: ' +
+            'en la PS3 el personaje saldría incompleto. Aquí los ves porque esta vista es una previsualización. ' +
+            'Para arreglarlo, renombra esas cajas con su parte (<code>head</code>, <code>body</code>, ' +
+            '<code>right_arm</code>, <code>left_leg</code>…) o quítalas del <code>.bbmodel</code>.</span></div>';
+        }
+        if (comp.aproximaciones && comp.aproximaciones.length) {
+          bloqueComp += '<div class="compat compat-warn"><b>⚠ El juego lo aproxima</b>' +
+            lista(comp.aproximaciones, 4) + '</div>';
+        }
+        if (!bloqueComp) {
+          bloqueComp = '<div class="compat compat-ok"><b>✓ Compatible</b>' +
+            '<span>Todas las cajas caben en el formato del juego.</span></div>';
+        }
+        note.innerHTML = bloqueComp +
+          (w.length
           ? '<b>Avisos del modelo</b><ul>' + w.slice(0, 6).map((x) => '<li>' + escapeHtml(x.text) + '</li>').join('') + '</ul>'
           : '') +
           '<span class="muted">Arrastra las piezas azules de la vista 3D para mover la armadura.</span>';
@@ -2048,6 +2110,12 @@
   function bbToBoxes(parsed, skin) {
     const warnings = [];
     const boxes = [];
+    // qué se pierde por el camino: sirve para decir si el modelo es compatible o no
+    const perdidos = [];      // cubos que no se pueden convertir (no estarán en el juego)
+    let rotados = 0;          // cubos girados: LCE no sabe rotar cajas
+    let decimales = 0;        // cubos con decimales: el juego trunca
+    let avisoTextura = '';    // el modelo trae su textura a otra resolución
+    const lejanos = [];       // cajas que acaban muy lejos del cuerpo (¿piezas sueltas?)
     // El .bbmodel dice en qué resolución están sus UV (`resolution`, p. ej. 128×128).
     // La skin acaba en 64×64 (o 64×32), así que las coordenadas de textura hay que
     // reescalarlas: si no, cada cara busca un trozo que no existe y el modelo sale
@@ -2061,6 +2129,8 @@
       return [Math.round(Number(uv[0]) * escU), Math.round(Number(uv[1]) * escV)];
     };
     if ((Math.abs(escU - 1) > 1e-9 || Math.abs(escV - 1) > 1e-9) && skin) {
+      avisoTextura = 'Textura del modelo ' + res.width + '×' + res.height + ' → skin ' + skin.w + '×' + skin.h +
+        ': las UV se reescalan (' + Number(escU.toFixed(3)) + '×)';
       warnings.push({
         level: 'info',
         text: 'Textura del modelo ' + res.width + '×' + res.height + ' → skin ' + skin.w + '×' + skin.h +
@@ -2095,6 +2165,10 @@
         detectados++;
       }
       if (!type) {
+        perdidos.push({
+          name: name || grupo || 'sin nombre',
+          why: 'no es ninguna parte del jugador'
+        });
         warnings.push({
           level: 'warn',
           text: 'Cubo «' + (name || 'sin nombre') + '»' + (grupo ? ' (grupo «' + grupo + '»)' : '') +
@@ -2110,11 +2184,13 @@
       }
       const from = el.from, to = el.to;
       if (!Array.isArray(from) || !Array.isArray(to)) {
+        perdidos.push({ name: name || grupo || 'sin nombre', why: 'no tiene from/to' });
         warnings.push({ level: 'warn', text: 'Cubo «' + name + '»: no tiene from/to (se ignora)' });
         return;
       }
       const rot = el.rotation;
       if (Array.isArray(rot) && rot.some((v) => Math.abs(v) > 0.001)) {
+        rotados++;
         warnings.push({ level: 'warn', text: 'Cubo «' + name + '»: tiene rotación; LCE no puede rotar cajas (se coloca sin rotar)' });
       }
       // el juego trunca posiciones y tamaños a enteros: redondeamos ya aquí
@@ -2123,10 +2199,17 @@
       const min = rawMin.map(Math.round);
       const max = rawMax.map(Math.round);
       if (min.some((v, i) => Math.abs(v - rawMin[i]) > 1e-6) || max.some((v, i) => Math.abs(v - rawMax[i]) > 1e-6)) {
+        decimales++;
         warnings.push({ level: 'info', text: 'Cubo «' + name + '»: valores con decimales, LCE los trunca a enteros (se redondea)' });
       }
       const size = [max[0] - min[0], max[1] - min[1], max[2] - min[2]];
+      // una caja entera fuera del volumen del jugador casi siempre es una pieza suelta
+      // que se ha colado en una parte por su posición: conviene avisar
+      if (min[0] < -32 || max[0] > 32 || min[1] < -24 || max[1] > 56 || min[2] < -24 || max[2] > 24) {
+        lejanos.push(name || grupo || 'sin nombre');
+      }
       if (size.some((v) => v <= 0)) {
+        perdidos.push({ name: name || grupo || 'sin nombre', why: 'mide 0 en algún eje' });
         warnings.push({ level: 'warn', text: 'Cubo «' + name + '»: tamaño 0 (se ignora)' });
         return;
       }
@@ -2211,8 +2294,34 @@
       warnings: warnings,
       xmlVersion: needsV3 ? 3 : 2,
       slim: slim,
-      hasArmorHint: hasArmorHint
+      hasArmorHint: hasArmorHint,
+      compat: compatibilidad(perdidos, rotados, decimales, { textura: avisoTextura, lejanos: lejanos })
     };
+  }
+
+  /**
+   * ¿Se puede llevar al juego este modelo tal cual?
+   *   ok            → todo entra sin tocar nada
+   *   avisos        → entra, pero el juego lo aproxima (rotaciones, decimales, textura)
+   *   incompatible  → hay cubos que NO se pueden convertir: en el juego faltarían
+   */
+  function compatibilidad(perdidos, rotados, decimales, extra) {
+    extra = extra || {};
+    const motivos = [];
+    const aprox = [];
+    (perdidos || []).forEach((p) => {
+      motivos.push('Cubo «' + p.name + '»: ' + p.why);
+    });
+    if (rotados) aprox.push(rotados + ' cubo(s) girados: el formato del juego no rota cajas (se colocan rectas)');
+    if (decimales) aprox.push(decimales + ' cubo(s) con decimales: el juego los trunca a píxeles enteros');
+    if (extra.lejanos && extra.lejanos.length) {
+      aprox.push(extra.lejanos.length + ' caja(s) fuera del volumen del jugador («' +
+        extra.lejanos.slice(0, 3).join('», «') + '»' + (extra.lejanos.length > 3 ? '»…' : '»') +
+        '): comprueba que cada una es de la parte que le toca');
+    }
+    if (extra.textura) aprox.push(extra.textura);
+    const estado = perdidos && perdidos.length ? 'incompatible' : (aprox.length ? 'avisos' : 'ok');
+    return { estado: estado, motivos: motivos, aproximaciones: aprox };
   }
 
   /** ¿el modelo sustituye al jugador (personaje) o solo le añade adornos? */
@@ -2258,7 +2367,8 @@
       parts: res.parts,
       warnings: res.warnings,
       xmlVersion: res.xmlVersion,
-      cubes: parsed.elements.length
+      cubes: parsed.elements.length,
+      compat: res.compat || { estado: 'ok', motivos: [], aproximaciones: [] }
     };
     if (res.slim && skin.model === 'wide') skin.model = 'slim';
     if (!res.slim && skin.model === 'slim') skin.model = 'wide';
@@ -2269,7 +2379,14 @@
       toast('Parece un <b>modelo propio</b> (' + res.boxes.length + ' cajas): activo «sin cuerpo base» ' +
         'para que en el juego solo se vea tu modelo. Se puede desmarcar en las opciones de la skin.', 'info');
     }
-    toast('Modelo <b>' + escapeHtml(file.name) + '</b>: ' + res.boxes.length + ' cajas · XMLVERSION ' + res.xmlVersion, 'ok');
+    const comp = res.compat || { estado: 'ok', motivos: [], aproximaciones: [] };
+    if (comp.estado === 'incompatible') {
+      toast('<b>No compatible</b>: el modelo <b>' + escapeHtml(file.name) + '</b> tiene ' + comp.motivos.length +
+        ' cubo(s) que el formato del juego no puede guardar. Se puede mirar y descargar, pero en el juego saldría ' +
+        'incompleto. Los motivos están en la tarjeta de la skin.', 'error');
+    } else {
+      toast('Modelo <b>' + escapeHtml(file.name) + '</b>: ' + res.boxes.length + ' cajas · XMLVERSION ' + res.xmlVersion, 'ok');
+    }
     if (res.warnings.length) toast(res.warnings.length + ' aviso(s) del modelo: <span class="muted">' + escapeHtml(res.warnings[0].text) + '</span>', 'warn');
     return { skin, parsed, res };
   }
